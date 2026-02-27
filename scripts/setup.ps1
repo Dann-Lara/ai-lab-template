@@ -1,21 +1,20 @@
 # AI Lab Template - Setup Script for Windows (PowerShell)
 # Run with: powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
+# Encoding: ASCII-safe (no Unicode/emoji to avoid parse errors)
 
 $ErrorActionPreference = "Stop"
 
-# Colors helpers
-function Write-Header($msg) { Write-Host "`n$msg" -ForegroundColor Cyan }
-function Write-Success($msg) { Write-Host "  ✅ $msg" -ForegroundColor Green }
-function Write-Warning($msg) { Write-Host "  ⚠️  $msg" -ForegroundColor Yellow }
-function Write-Fail($msg)    { Write-Host "  ❌ $msg" -ForegroundColor Red }
-function Write-Step($msg)    { Write-Host "`n$msg" -ForegroundColor Yellow }
+function Write-Success($msg) { Write-Host "  [OK] $msg" -ForegroundColor Green }
+function Write-Warn($msg)    { Write-Host "  [!!] $msg" -ForegroundColor Yellow }
+function Write-Fail($msg)    { Write-Host "  [ERROR] $msg" -ForegroundColor Red }
+function Write-Step($msg)    { Write-Host "" ; Write-Host ">> $msg" -ForegroundColor Yellow }
 
 Clear-Host
-Write-Host "╔═══════════════════════════════════════╗" -ForegroundColor Blue
-Write-Host "║      🚀 AI Lab Template Setup         ║" -ForegroundColor Blue
-Write-Host "╚═══════════════════════════════════════╝" -ForegroundColor Blue
+Write-Host "========================================" -ForegroundColor Blue
+Write-Host "     AI Lab Template - Setup            " -ForegroundColor Blue
+Write-Host "========================================" -ForegroundColor Blue
 
-# ── 1. CHECK REQUIREMENTS ────────────────────────────────────────
+# -- 1. CHECK REQUIREMENTS ----------------------------------------
 Write-Step "Checking requirements..."
 
 # Node.js
@@ -49,120 +48,140 @@ $dockerAvailable = $false
 if (Get-Command docker -ErrorAction SilentlyContinue) {
     try {
         $null = docker info 2>&1
-        $dockerAvailable = $true
-        Write-Success "Docker found and running"
+        if ($LASTEXITCODE -eq 0) {
+            $dockerAvailable = $true
+            Write-Success "Docker found and running"
+        } else {
+            Write-Warn "Docker found but not running. Start Docker Desktop and re-run setup."
+        }
     } catch {
-        Write-Warning "Docker found but not running. Start Docker Desktop and re-run setup."
+        Write-Warn "Docker found but not running. Start Docker Desktop and re-run setup."
     }
 } else {
-    Write-Warning "Docker not found. You can still run frontend/backend manually, but DB won't start."
-    Write-Warning "Install Docker Desktop from https://www.docker.com/products/docker-desktop"
+    Write-Warn "Docker not found. Install Docker Desktop from https://www.docker.com/products/docker-desktop"
+    Write-Warn "You can still run frontend/backend manually without Docker."
 }
 
-# ── 2. INSTALL DEPENDENCIES ──────────────────────────────────────
-Write-Step "📦 Installing dependencies..."
+# -- 2. INSTALL DEPENDENCIES --------------------------------------
+Write-Step "Installing npm dependencies..."
 npm install
-if ($LASTEXITCODE -ne 0) { Write-Fail "npm install failed"; exit 1 }
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail "npm install failed"
+    exit 1
+}
 Write-Success "Dependencies installed"
 
-# ── 3. HUSKY GIT HOOKS ───────────────────────────────────────────
-Write-Step "🐕 Setting up Git hooks (Husky)..."
-# Only setup husky if .git folder exists
+# -- 3. HUSKY GIT HOOKS -------------------------------------------
+Write-Step "Setting up Git hooks (Husky)..."
 if (Test-Path ".git") {
-    npx husky install
+    npx husky install 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
         Write-Success "Husky configured"
     } else {
-        Write-Warning "Husky setup skipped (not a git repo yet). Run 'git init' first, then 'npx husky install'"
+        Write-Warn "Husky setup failed. Run 'npx husky install' manually after 'git init'."
     }
 } else {
-    Write-Warning "No .git folder found. Run 'git init' then 'npx husky install' manually."
+    Write-Warn "No .git folder found. Run 'git init' then 'npx husky install' manually."
 }
 
-# ── 4. COPY .ENV FILES ───────────────────────────────────────────
-Write-Step "⚙️  Setting up environment files..."
-$envExamples = Get-ChildItem -Path "." -Filter ".env.example" -Recurse |
+# -- 4. COPY .ENV FILES -------------------------------------------
+Write-Step "Setting up environment files..."
+$rootPath = (Get-Location).Path
+$envExamples = Get-ChildItem -Path "." -Filter ".env.example" -Recurse -ErrorAction SilentlyContinue |
     Where-Object { $_.FullName -notlike "*\node_modules\*" -and $_.FullName -notlike "*\.next\*" }
 
 foreach ($example in $envExamples) {
     $envFile = $example.FullName -replace "\.example$", ""
+    $relPath  = $example.FullName.Replace($rootPath + "\", "")
     if (-not (Test-Path $envFile)) {
         Copy-Item $example.FullName $envFile
-        Write-Success "Created: $($example.FullName -replace [regex]::Escape((Get-Location).Path + '\'), '')"
+        Write-Success "Created: $relPath"
     } else {
-        Write-Warning "Already exists (skipped): $($envFile -replace [regex]::Escape((Get-Location).Path + '\'), '')"
+        Write-Warn "Already exists, skipped: $relPath"
     }
 }
 
-# ── 5. CHECK OPENAI KEY ──────────────────────────────────────────
+# -- 5. CHECK OPENAI KEY ------------------------------------------
 $backendEnv = "apps\backend\.env"
 if (Test-Path $backendEnv) {
     $content = Get-Content $backendEnv -Raw
     if ($content -match "sk-your-api-key-here") {
-        Write-Host "`n⚠️  ACTION REQUIRED: Set your OPENAI_API_KEY in apps\backend\.env" -ForegroundColor Magenta
+        Write-Host ""
+        Write-Host "  [ACTION REQUIRED] Set your OPENAI_API_KEY in apps\backend\.env" -ForegroundColor Magenta
     }
 }
 
-# ── 6. DOCKER SERVICES ───────────────────────────────────────────
+# -- 6. DOCKER SERVICES -------------------------------------------
 if ($dockerAvailable) {
-    Write-Step "🐳 Starting Docker services (postgres + redis)..."
-    docker compose up -d postgres redis
+    Write-Step "Starting Docker services (postgres + redis)..."
+
+    # Try docker compose v2 first, fall back to v1
+    docker compose up -d postgres redis 2>&1
     if ($LASTEXITCODE -ne 0) {
-        # Fallback to docker-compose v1
+        Write-Warn "docker compose v2 failed, trying docker-compose v1..."
         docker-compose up -d postgres redis
+        if ($LASTEXITCODE -ne 0) {
+            Write-Fail "Could not start Docker services. Check docker-compose.yml."
+            exit 1
+        }
     }
+    Write-Success "postgres and redis containers started"
 
     # Wait for PostgreSQL
-    Write-Step "⏳ Waiting for PostgreSQL to be ready..."
+    Write-Step "Waiting for PostgreSQL to be ready..."
     $retries = 30
     $ready = $false
     while ($retries -gt 0 -and -not $ready) {
-        try {
-            $result = docker compose exec -T postgres pg_isready -U admin 2>&1
-            if ($LASTEXITCODE -eq 0) { $ready = $true }
-        } catch {}
-        if (-not $ready) {
+        $pgCheck = docker compose exec -T postgres pg_isready -U admin 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            $ready = $true
+        } else {
             Write-Host "  Waiting... ($retries retries left)" -ForegroundColor Gray
             Start-Sleep -Seconds 2
             $retries--
         }
     }
+
     if (-not $ready) {
-        Write-Fail "PostgreSQL did not become ready in time"
+        Write-Fail "PostgreSQL did not become ready in time. Check logs: docker compose logs postgres"
         exit 1
     }
     Write-Success "PostgreSQL is ready"
 
     # Run migrations
-    Write-Step "🗄️  Running database migrations..."
+    Write-Step "Running database migrations..."
     npm run db:migrate
     if ($LASTEXITCODE -ne 0) {
-        Write-Warning "Migration failed — you may need to run 'npm run db:migrate' manually after setting DATABASE_URL"
+        Write-Warn "Migration failed. Run 'npm run db:migrate' manually after checking DATABASE_URL in apps\backend\.env"
     } else {
         Write-Success "Migrations complete"
     }
 
     # Start n8n
-    Write-Step "🔄 Starting n8n..."
-    docker compose up -d n8n
-    Write-Success "n8n started at http://localhost:5678"
+    Write-Step "Starting n8n..."
+    docker compose up -d n8n 2>&1
+    Write-Success "n8n started at http://localhost:5678 (admin / admin123)"
 
 } else {
-    Write-Host "`n⚠️  Skipping Docker steps. Start Docker Desktop and run:" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Skipping Docker steps. Once Docker Desktop is running, execute:" -ForegroundColor Yellow
     Write-Host "    docker compose up -d" -ForegroundColor Cyan
     Write-Host "    npm run db:migrate" -ForegroundColor Cyan
 }
 
-# ── 7. DONE ──────────────────────────────────────────────────────
-Write-Host "`n╔═══════════════════════════════════════╗" -ForegroundColor Green
-Write-Host "║       ✅ Setup Complete!               ║" -ForegroundColor Green
-Write-Host "╚═══════════════════════════════════════╝" -ForegroundColor Green
+# -- 7. DONE ------------------------------------------------------
 Write-Host ""
-Write-Host "  Run " -NoNewline; Write-Host "npm run dev" -ForegroundColor Cyan -NoNewline; Write-Host " to start all development servers"
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "     Setup Complete!                    " -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Frontend:  " -NoNewline; Write-Host "http://localhost:3000" -ForegroundColor Cyan
-Write-Host "  Backend:   " -NoNewline; Write-Host "http://localhost:3001" -ForegroundColor Cyan
-Write-Host "  API Docs:  " -NoNewline; Write-Host "http://localhost:3001/api/docs" -ForegroundColor Cyan
-Write-Host "  n8n:       " -NoNewline; Write-Host "http://localhost:5678" -ForegroundColor Cyan -NoNewline
+Write-Host "  Run " -NoNewline
+Write-Host "npm run dev" -ForegroundColor Cyan -NoNewline
+Write-Host " to start all development servers"
+Write-Host ""
+Write-Host "  Frontend : " -NoNewline ; Write-Host "http://localhost:3000" -ForegroundColor Cyan
+Write-Host "  Backend  : " -NoNewline ; Write-Host "http://localhost:3001" -ForegroundColor Cyan
+Write-Host "  API Docs : " -NoNewline ; Write-Host "http://localhost:3001/api/docs" -ForegroundColor Cyan
+Write-Host "  n8n      : " -NoNewline ; Write-Host "http://localhost:5678" -ForegroundColor Cyan -NoNewline
 Write-Host "  (admin / admin123)"
 Write-Host ""
