@@ -4,7 +4,7 @@ A production-ready fullstack monorepo template for building AI-powered applicati
 
 **Stack:** Next.js 14 · NestJS · LangChain · n8n · TypeScript · Turborepo · Docker
 
-[![CI](https://github.com/your-username/ai-lab-template/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/ai-lab-template/actions)
+[![CI](https://github.com/Dann-Lara/ai-lab-template/actions/workflows/ci.yml/badge.svg)](https://github.com/Dann-Lara/ai-lab-template/actions)
 
 ---
 
@@ -35,11 +35,11 @@ A production-ready fullstack monorepo template for building AI-powered applicati
 
 ```bash
 # Using degit (recommended)
-npx degit your-username/ai-lab-template my-project
+npx degit Dann-Lara/ai-lab-template my-project
 cd my-project
 
 # Or clone directly
-git clone https://github.com/your-username/ai-lab-template my-project
+git clone https://github.com/Dann-Lara/ai-lab-template my-project
 cd my-project
 ```
 
@@ -216,3 +216,21 @@ Key variables:
 ## 📄 License
 
 MIT
+
+---
+
+## 🪟 Windows Notes
+
+`npm run setup` detecta automáticamente el OS:
+- **Windows** → ejecuta `scripts/setup.ps1` via PowerShell
+- **Mac / Linux** → ejecuta `scripts/setup.sh` via Bash
+
+Si PowerShell bloquea la ejecución por política, ábrelo como Administrador y ejecuta:
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+Si usas **Git Bash** o **WSL**, puedes ejecutar el bash script directamente:
+```bash
+bash scripts/setup.sh
+```
