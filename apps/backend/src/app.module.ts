@@ -1,0 +1,46 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { AiModule } from './modules/ai/ai.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsersModule } from './modules/users/users.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+
+@Module({
+  imports: [
+    // Config
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+
+    // Database
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        url: config.get<string>('DATABASE_URL'),
+        autoLoadEntities: true,
+        synchronize: config.get('NODE_ENV') === 'development',
+        logging: config.get('NODE_ENV') === 'development',
+      }),
+    }),
+
+    // Rate limiting
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => [
+        {
+          ttl: config.get<number>('THROTTLE_TTL', 60000),
+          limit: config.get<number>('THROTTLE_LIMIT', 100),
+        },
+      ],
+    }),
+
+    // Feature modules
+    AiModule,
+    AuthModule,
+    UsersModule,
+    WebhooksModule,
+  ],
+})
+export class AppModule {}

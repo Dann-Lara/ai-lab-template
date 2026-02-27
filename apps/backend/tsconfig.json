@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "paths": {
+      "@ai-lab/shared": ["../../packages/shared/src/index.ts"],
+      "@ai-lab/ai-core": ["../../packages/ai-core/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

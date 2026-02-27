@@ -1,0 +1,11 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": { "^.+\\.ts$": "ts-jest" },
+  "moduleNameMapper": {
+    "@ai-lab/shared": "<rootDir>/../../../packages/shared/src/index.ts",
+    "@ai-lab/ai-core": "<rootDir>/../../../packages/ai-core/src/index.ts"
+  }
+}
