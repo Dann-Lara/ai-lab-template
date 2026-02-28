@@ -4,7 +4,9 @@ import { locales, defaultLocale } from './lib/i18n';
 export default createMiddleware({
   locales,
   defaultLocale,
-  localePrefix: 'as-needed', // /es/dashboard  but just /dashboard for default (es)
+  // 'never' = no URL prefix for any locale (/dashboard for both ES and EN)
+  // Locale is stored in the Accept-Language header / cookie automatically by next-intl
+  localePrefix: 'never',
 });
 
 export const config = {
