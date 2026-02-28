@@ -1,14 +1,31 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Space_Mono, Bebas_Neue, Inter_Tight } from 'next/font/google';
 import { I18nProvider } from '../lib/i18n-context';
 import { ThemeProvider } from '../components/ui/ThemeProvider';
-import { Navbar } from '../components/ui/Navbar';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const bebasNeue = Bebas_Neue({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-headline',
+  display: 'swap',
+});
+
+const spaceMono = Space_Mono({
+  weight: ['400', '700'],
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+});
+
+const interTight = Inter_Tight({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'AI Lab',
+  title: { default: 'AI Lab', template: '%s | AI Lab' },
   description: 'Fullstack AI Lab Template — Next.js + NestJS + LangChain + n8n',
 };
 
@@ -18,12 +35,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <html suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans bg-white dark:bg-slate-900 min-h-screen`}>
+    <html suppressHydrationWarning className="dark">
+      <body className={`${bebasNeue.variable} ${spaceMono.variable} ${interTight.variable} font-sans`}>
         <I18nProvider>
           <ThemeProvider>
-            <Navbar />
-            <main>{children}</main>
+            {children}
           </ThemeProvider>
         </I18nProvider>
       </body>

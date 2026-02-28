@@ -1,181 +1,76 @@
-# 🚀 AI Lab Template
+# AI Lab Template
 
-Monorepo fullstack listo para producción con IA, automatización e i18n.
+> Fullstack AI monorepo — Next.js · NestJS · LangChain · n8n · Turborepo
 
-**Stack:** Next.js 14 · NestJS · LangChain · n8n · TypeScript · Turborepo · Docker
-
-[![CI](https://github.com/Dann-Lara/ai-lab-template/actions/workflows/ci.yml/badge.svg)](https://github.com/Dann-Lara/ai-lab-template/actions)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square)](https://nextjs.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-10-red?style=flat-square)](https://nestjs.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
 ---
 
-## Quick Start / Inicio Rápido
+## Quick Start
 
-### Requirements / Requisitos
-- Node.js >= 20
-- Docker Desktop (running / ejecutándose)
-- Git
+> **Docker must be running before `npm run dev`**
 
-### 1. Clone / Clonar
 ```bash
-npx degit Dann-Lara/ai-lab-template my-project
-cd my-project
-```
-
-### 2. Setup
-```bash
-# Windows
-npm run setup
-
-# Mac / Linux
-npm run setup
-```
-
-### 3. Set API Key / Configura tu API Key
-Edit `apps/backend/.env`:
-```
-OPENAI_API_KEY=sk-your-key-here
-```
-
-### 4. Start Docker (REQUIRED before npm run dev)
-```bash
-npm run docker:up
-```
-
-> ⚠️ **El backend requiere PostgreSQL corriendo.** Si ves errores de conexión a DB, asegúrate de que Docker Desktop esté abierto y ejecuta `npm run docker:up` antes de `npm run dev`.
-
-### 5. Run / Ejecutar
-```bash
-npm run dev
-```
-
-| Service   | URL                                    |
-|-----------|----------------------------------------|
-| Frontend  | http://localhost:3000                  |
-| Backend   | http://localhost:3001                  |
-| Swagger   | http://localhost:3001/api/docs         |
-| n8n       | http://localhost:5678 (admin/admin123) |
-
----
-
-## 🗂️ Structure / Estructura
-
-```
-ai-lab-template/
-├── apps/
-│   ├── frontend/          # Next.js 14 App Router + Tailwind + i18n + Anime.js
-│   └── backend/           # NestJS REST API
-├── packages/
-│   ├── ai-core/           # LangChain chains & agents (desacoplado)
-│   ├── shared/            # Tipos TypeScript compartidos
-│   └── eslint-config/     # ESLint + Prettier compartido
-├── docker/
-├── scripts/
-│   ├── setup.js           # Dispatcher cross-platform
-│   ├── setup.sh           # Mac/Linux setup
-│   └── setup.ps1          # Windows PowerShell setup
-└── docker-compose.yml
+git clone <repo>
+cd ai-lab-template
+npm run setup          # installs deps, starts Docker, seeds superadmin
+# Edit apps/backend/.env → set OPENAI_API_KEY
+npm run dev            # starts frontend (3000) + backend (3001)
 ```
 
 ---
 
-## 🌐 Internationalization / Internacionalización
+## Auth & Roles
 
-The app supports **English** and **Spanish** (default).
+| Role         | Created by      | Panel       | Access                         |
+|-------------|-----------------|-------------|-------------------------------|
+| `superadmin` | Auto on startup | `/admin`    | All — creates admin/client    |
+| `admin`      | By superadmin   | `/admin`    | Create/manage clients         |
+| `client`     | Self (signup)   | `/client`   | AI tools only                 |
 
-- Messages in `apps/frontend/messages/en.json` and `es.json`
-- Language switcher in the navbar (🇺🇸 EN / 🇲🇽 ES)
-- Default locale: `es` (no URL prefix) — English at `/en/...`
-
-To add a new language:
-1. Add the locale to `apps/frontend/lib/i18n.ts`
-2. Create `apps/frontend/messages/<locale>.json`
-3. Add the label to `LanguageSwitcher.tsx`
-
----
-
-## 🎨 Theming / Temas
-
-Light/Dark mode toggle in the navbar. Preference is saved in `localStorage`.
-
-CSS variables in `globals.css` control all theme-aware colors. Use them via Tailwind:
-```css
-/* Always use dark: prefix for dark overrides */
-className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
-
-/* Or use the shared utility classes */
-className="card"       /* white card, dark-aware */
-className="btn-primary"
-className="input"
-className="label"
+**Default superadmin** (dev):
 ```
-
----
-
-## 🎬 Animations / Animaciones
-
-Anime.js hooks in `apps/frontend/hooks/useAnime.ts`:
-
-```tsx
-import { useFadeInUp, useStaggerIn } from '@/hooks/useAnime';
-
-function MyPage() {
-  const heroRef    = useFadeInUp<HTMLDivElement>({ duration: 700 });
-  const listRef    = useStaggerIn<HTMLUListElement>({ delay: 200, stagger: 80 });
-
-  return (
-    <>
-      <div ref={heroRef}>Hero content</div>
-      <ul ref={listRef}>
-        <li>Item 1</li>
-        <li>Item 2</li>
-        <li>Item 3</li>
-      </ul>
-    </>
-  );
-}
+email:    superadmin@ailab.dev
+password: SuperAdmin123!
 ```
+> Change `SUPERADMIN_EMAIL` and `SUPERADMIN_PASSWORD` in `apps/backend/.env` before production.
 
 ---
 
-## 🤖 AI Integration / Integración IA
+## Auth Endpoints
 
-```typescript
-import { generateText, summarizeText } from '@ai-lab/ai-core';
-
-const { text } = await generateText({
-  prompt: 'Explica TypeScript generics',
-  systemMessage: 'Eres un senior developer',
-  temperature: 0.7,
-});
-```
+| Method | Path                | Auth        | Description                      |
+|--------|---------------------|-------------|----------------------------------|
+| POST   | `/v1/auth/signup`   | Public      | Create client account            |
+| POST   | `/v1/auth/login`    | Public      | Returns access + refresh tokens  |
+| POST   | `/v1/auth/refresh`  | —           | Refresh access token             |
+| GET    | `/v1/auth/me`       | JWT         | Current user info                |
+| POST   | `/v1/auth/users`    | admin+      | Create admin/client user         |
 
 ---
 
-## 🔧 Scripts
+## Services
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start all dev servers |
-| `npm run build` | Build all packages |
-| `npm run docker:up` | Start Docker services (DB required!) |
-| `npm run docker:down` | Stop Docker services |
-| `npm run db:migrate` | Run DB migrations |
-| `npm run setup` | First-time project setup |
-
----
-
-## 🪟 Windows Notes
-
-`npm run setup` detects OS automatically:
-- **Windows** → `scripts/setup.ps1` via PowerShell
-- **Mac/Linux** → `scripts/setup.sh` via Bash
-
-If PowerShell blocks execution:
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
-```
+| Service    | URL                              |
+|------------|----------------------------------|
+| Frontend   | http://localhost:3000            |
+| Backend    | http://localhost:3001            |
+| Swagger    | http://localhost:3001/api/docs   |
+| n8n        | http://localhost:5678            |
+| PostgreSQL | localhost:5432                   |
+| Redis      | localhost:6379                   |
 
 ---
 
-## 📄 License / Licencia
-MIT
+## Stack
+
+- **Frontend**: Next.js 14, App Router, Tailwind CSS, Bebas Neue + Space Mono typography
+- **Backend**: NestJS 10, TypeORM, Passport JWT, class-validator
+- **AI**: LangChain, GPT-4o-mini
+- **DB**: PostgreSQL 16 + Redis
+- **Automation**: n8n with bidirectional webhooks
+- **Monorepo**: Turborepo + shared packages (`@ai-lab/shared`, `@ai-lab/ai-core`)
+- **CI/CD**: GitHub Actions + Docker Compose
