@@ -1,18 +1,18 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { useI18n } from '../lib/i18n-context';
 import { useFadeInUp, useStaggerIn } from '../hooks/useAnime';
 
 export default function Home(): React.JSX.Element {
-  const t = useTranslations('home');
+  const { t } = useI18n();
   const heroRef = useFadeInUp<HTMLDivElement>({ duration: 700 });
   const featuresRef = useStaggerIn<HTMLDivElement>({ delay: 300, stagger: 100 });
 
   const features = [
-    { icon: '🤖', label: t('featureAi') },
-    { icon: '⚡', label: t('featureAutomations') },
-    { icon: '🔒', label: t('featureSecurity') },
+    { icon: '🤖', label: t.home.featureAi },
+    { icon: '⚡', label: t.home.featureAutomations },
+    { icon: '🔒', label: t.home.featureSecurity },
   ];
 
   return (
@@ -27,30 +27,30 @@ export default function Home(): React.JSX.Element {
 
         <h1 className="text-5xl sm:text-6xl font-bold mb-4 bg-gradient-to-r
                        from-white via-blue-200 to-brand-400 bg-clip-text text-transparent">
-          {t('title')}
+          {t.home.title}
         </h1>
-        <p className="text-lg text-slate-400 mb-10">{t('subtitle')}</p>
+        <p className="text-lg text-slate-400 mb-10">{t.home.subtitle}</p>
 
         <div className="flex flex-wrap gap-3 justify-center">
           <Link href="/dashboard"
             className="btn-primary text-base px-6 py-3 shadow-lg shadow-brand-900/50
                        hover:shadow-brand-800/60 hover:-translate-y-0.5 transition-all">
-            {t('openDashboard')} →
+            {t.home.openDashboard} →
           </Link>
           <a href="http://localhost:3001/api/docs" target="_blank" rel="noopener noreferrer"
-            className="btn-secondary text-base px-6 py-3 bg-slate-800 hover:bg-slate-700
-                       text-slate-200 border border-slate-700">
-            {t('apiDocs')}
+            className="px-6 py-3 text-base font-medium rounded-lg bg-slate-800 hover:bg-slate-700
+                       text-slate-200 border border-slate-700 transition-all">
+            {t.home.apiDocs}
           </a>
           <a href="http://localhost:5678" target="_blank" rel="noopener noreferrer"
             className="px-6 py-3 text-base font-medium rounded-lg bg-orange-900/40 hover:bg-orange-800/50
                        text-orange-300 border border-orange-800/50 transition-all">
-            {t('n8nWorkflows')}
+            {t.home.n8nWorkflows}
           </a>
         </div>
       </div>
 
-      <div ref={featuresRef} className="flex gap-4 mt-16">
+      <div ref={featuresRef} className="flex flex-wrap gap-4 mt-16 justify-center">
         {features.map((f) => (
           <div key={f.label}
             className="px-6 py-4 rounded-xl bg-slate-800/50 border border-slate-700/50

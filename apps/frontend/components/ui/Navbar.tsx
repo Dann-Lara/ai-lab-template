@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useI18n } from '../../lib/i18n-context';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 
 export function Navbar(): React.JSX.Element {
-  const t = useTranslations('nav');
+  const { t } = useI18n();
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 dark:border-slate-700
@@ -18,8 +18,8 @@ export function Navbar(): React.JSX.Element {
             ⚡ AI Lab
           </Link>
           <nav className="hidden sm:flex items-center gap-1">
-            <NavLink href="/">{t('home')}</NavLink>
-            <NavLink href="/dashboard">{t('dashboard')}</NavLink>
+            <NavLink href="/">{t.nav.home}</NavLink>
+            <NavLink href="/dashboard">{t.nav.dashboard}</NavLink>
           </nav>
         </div>
         <div className="flex items-center gap-2">
@@ -36,8 +36,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
     <Link href={href}
       className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900
                  dark:text-slate-400 dark:hover:text-slate-100
-                 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800
-                 transition-all duration-150">
+                 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-150">
       {children}
     </Link>
   );

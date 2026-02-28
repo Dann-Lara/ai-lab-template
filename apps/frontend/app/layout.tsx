@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
 import { Inter } from 'next/font/google';
-
+import { I18nProvider } from '../lib/i18n-context';
 import { ThemeProvider } from '../components/ui/ThemeProvider';
 import { Navbar } from '../components/ui/Navbar';
 import './globals.css';
@@ -14,23 +12,20 @@ export const metadata: Metadata = {
   description: 'Fullstack AI Lab Template — Next.js + NestJS + LangChain + n8n',
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
-}): Promise<React.JSX.Element> {
-  const locale = await getLocale();
-  const messages = await getMessages();
-
+}): React.JSX.Element {
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html suppressHydrationWarning>
       <body className={`${inter.variable} font-sans bg-white dark:bg-slate-900 min-h-screen`}>
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <I18nProvider>
           <ThemeProvider>
             <Navbar />
             <main>{children}</main>
           </ThemeProvider>
-        </NextIntlClientProvider>
+        </I18nProvider>
       </body>
     </html>
   );
