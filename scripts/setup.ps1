@@ -74,14 +74,14 @@ Write-Success "Dependencies installed"
 # -- 3. HUSKY GIT HOOKS -------------------------------------------
 Write-Step "Setting up Git hooks (Husky)..."
 if (Test-Path ".git") {
-    npx husky install 2>&1 | Out-Null
+    npx husky 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
         Write-Success "Husky configured"
     } else {
-        Write-Warn "Husky setup failed. Run 'npx husky install' manually after 'git init'."
+        Write-Warn "Husky setup failed. Run 'npx husky' manually after 'git init'."
     }
 } else {
-    Write-Warn "No .git folder found. Run 'git init' then 'npx husky install' manually."
+    Write-Warn "No .git folder found. Run 'git init' then 'npx husky' manually."
 }
 
 # -- 4. COPY .ENV FILES -------------------------------------------

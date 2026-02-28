@@ -25,7 +25,11 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={`${inter.variable} font-sans bg-white dark:bg-slate-900 min-h-screen`}>
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        {/*
+          next-intl v3: pass messages directly — the library handles serialization internally.
+          Do NOT JSON.parse/stringify — that breaks the internal IntlMessages type.
+        */}
+        <NextIntlClientProvider messages={messages}>
           <ThemeProvider>
             <Navbar />
             <main>{children}</main>

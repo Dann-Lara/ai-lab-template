@@ -11,10 +11,10 @@
     "type-check": "tsc --noEmit",
     "test": "jest --passWithNoTests",
     "test:e2e": "jest --config test/jest-e2e.json --passWithNoTests",
-    "db:migrate": "typeorm migration:run -d src/database/data-source.ts",
-    "db:migrate:revert": "typeorm migration:revert -d src/database/data-source.ts",
-    "db:migrate:generate": "typeorm migration:generate -d src/database/data-source.ts",
-    "db:seed": "ts-node scripts/seed.ts",
+    "db:migrate": "npx ts-node -r tsconfig-paths/register node_modules/typeorm/cli.js migration:run -d src/database/data-source.ts",
+    "db:migrate:revert": "npx ts-node -r tsconfig-paths/register node_modules/typeorm/cli.js migration:revert -d src/database/data-source.ts",
+    "db:migrate:generate": "npx ts-node -r tsconfig-paths/register node_modules/typeorm/cli.js migration:generate -d src/database/data-source.ts",
+    "db:seed": "npx ts-node -r tsconfig-paths/register scripts/seed.ts",
     "dev:nest": "nest start --watch"
   },
   "dependencies": {
@@ -41,7 +41,8 @@
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.20",
     "bcrypt": "^5.1.1",
-    "@nestjs/axios": "^3.0.0"
+    "@nestjs/axios": "^3.0.0",
+    "dotenv": "^16.4.0"
   },
   "devDependencies": {
     "@ai-lab/eslint-config": "*",

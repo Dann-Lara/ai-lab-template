@@ -1,99 +1,95 @@
 #!/bin/bash
 set -e
 
-# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${BLUE}"
-echo "╔═══════════════════════════════════════╗"
-echo "║      🚀 AI Lab Template Setup         ║"
-echo "╚═══════════════════════════════════════╝"
+echo "============================================"
+echo "     AI Lab Template - Setup"
+echo "============================================"
 echo -e "${NC}"
 
-# Check requirements
-echo -e "${YELLOW}Checking requirements...${NC}"
-command -v node >/dev/null 2>&1 || { echo -e "${RED}❌ Node.js is required. Install v20+${NC}"; exit 1; }
-command -v npm >/dev/null 2>&1 || { echo -e "${RED}❌ npm is required.${NC}"; exit 1; }
-command -v docker >/dev/null 2>&1 || { echo -e "${RED}❌ Docker is required.${NC}"; exit 1; }
-command -v docker-compose >/dev/null 2>&1 || command -v docker compose >/dev/null 2>&1 || { echo -e "${RED}❌ Docker Compose is required.${NC}"; exit 1; }
+#  1. REQUIREMENTS 
+echo -e "${YELLOW}>> Checking requirements...${NC}"
+command -v node >/dev/null 2>&1 || { echo -e "${RED}[ERROR] Node.js required (v20+)${NC}"; exit 1; }
+command -v docker >/dev/null 2>&1 || { echo -e "${RED}[ERROR] Docker required${NC}"; exit 1; }
+NODE_V=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+[ "$NODE_V" -lt 20 ] && echo -e "${RED}[ERROR] Node.js v20+ required. Got: $(node -v)${NC}" && exit 1
+echo -e "${GREEN}  [OK] Node.js $(node -v)${NC}"
+echo -e "${GREEN}  [OK] npm $(npm -v)${NC}"
 
-NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-if [ "$NODE_VERSION" -lt 20 ]; then
-  echo -e "${RED}❌ Node.js v20+ required. Current: $(node -v)${NC}"
-  exit 1
-fi
-echo -e "${GREEN}✅ Node.js $(node -v)${NC}"
-echo -e "${GREEN}✅ npm $(npm -v)${NC}"
-echo -e "${GREEN}✅ Docker found${NC}"
-
-# Install dependencies
-echo -e "\n${YELLOW}📦 Installing dependencies...${NC}"
+#  2. INSTALL 
+echo -e "\n${YELLOW}>> Installing dependencies...${NC}"
 npm install
+echo -e "${GREEN}  [OK] Dependencies installed${NC}"
 
-# Setup Husky
-echo -e "\n${YELLOW}🐕 Setting up Git hooks (Husky)...${NC}"
-npx husky install
-echo -e "${GREEN}✅ Husky configured${NC}"
+#  3. HUSKY 
+echo -e "\n${YELLOW}>> Setting up Git hooks...${NC}"
+if [ -d ".git" ]; then
+  npx husky 2>/dev/null \
+    && echo -e "${GREEN}  [OK] Husky configured${NC}" \
+    || echo -e "${YELLOW}  [!!] Husky skipped  run: npx husky${NC}"
+else
+  echo -e "${YELLOW}  [!!] No .git folder. Run: git init && npx husky${NC}"
+fi
 
-# Copy .env files
-echo -e "\n${YELLOW}⚙️  Setting up environment files...${NC}"
-for env_example in $(find . -name ".env.example" -not -path "*/node_modules/*" -not -path "*/.next/*"); do
-  env_file="${env_example%.example}"
-  if [ ! -f "$env_file" ]; then
-    cp "$env_example" "$env_file"
-    echo -e "${GREEN}  ✅ Created: $env_file${NC}"
+#  4. ENV FILES 
+echo -e "\n${YELLOW}>> Setting up .env files...${NC}"
+for f in $(find . -name ".env.example" -not -path "*/node_modules/*" -not -path "*/.next/*"); do
+  dest="${f%.example}"
+  if [ ! -f "$dest" ]; then
+    cp "$f" "$dest"
+    echo -e "${GREEN}  [OK] Created: $dest${NC}"
   else
-    echo -e "${YELLOW}  ⚠️  Already exists (skipped): $env_file${NC}"
+    echo -e "${YELLOW}  [!!] Already exists: $dest${NC}"
   fi
 done
 
-# Check OPENAI_API_KEY
-if grep -q "sk-your-api-key-here" apps/backend/.env 2>/dev/null; then
-  echo -e "\n${YELLOW}⚠️  Remember to set your OPENAI_API_KEY in apps/backend/.env${NC}"
-fi
+grep -q "sk-your-api-key-here" apps/backend/.env 2>/dev/null \
+  && echo -e "\n${YELLOW}  [!!] ACTION: Set OPENAI_API_KEY in apps/backend/.env${NC}"
 
-# Start Docker services
-echo -e "\n${YELLOW}🐳 Starting Docker services (postgres + redis)...${NC}"
-docker-compose up -d postgres redis
+#  5. DOCKER 
+echo -e "\n${YELLOW}>> Starting Docker services (postgres + redis)...${NC}"
+docker compose up -d postgres redis 2>/dev/null || docker-compose up -d postgres redis
 
-# Wait for PostgreSQL
-echo -e "${YELLOW}⏳ Waiting for PostgreSQL to be ready...${NC}"
+echo -e "${YELLOW}>> Waiting for PostgreSQL...${NC}"
 RETRIES=30
-until docker-compose exec -T postgres pg_isready -U admin > /dev/null 2>&1 || [ $RETRIES -eq 0 ]; do
-  echo "  Waiting... ($RETRIES retries left)"
-  sleep 2
-  RETRIES=$((RETRIES - 1))
+until docker compose exec -T postgres pg_isready -U admin >/dev/null 2>&1 || [ "$RETRIES" -eq 0 ]; do
+  echo "   Waiting... ($RETRIES left)"; sleep 2; RETRIES=$((RETRIES-1))
 done
+[ "$RETRIES" -eq 0 ] && echo -e "${RED}[ERROR] PostgreSQL timed out${NC}" && exit 1
+echo -e "${GREEN}  [OK] PostgreSQL ready${NC}"
 
-if [ $RETRIES -eq 0 ]; then
-  echo -e "${RED}❌ PostgreSQL did not become ready in time${NC}"
-  exit 1
+#  6. MIGRATIONS 
+MIGRATION_DIR="apps/backend/src/database/migrations"
+if [ -d "$MIGRATION_DIR" ] && [ -n "$(ls -A "$MIGRATION_DIR" 2>/dev/null)" ]; then
+  echo -e "\n${YELLOW}>> Running database migrations...${NC}"
+  npm run db:migrate \
+    && echo -e "${GREEN}  [OK] Migrations complete${NC}" \
+    || echo -e "${YELLOW}  [!!] Migrations failed  run manually: npm run db:migrate${NC}"
+else
+  echo -e "\n${YELLOW}  [!!] No migration files yet  skipping (TypeORM uses synchronize:true in dev)${NC}"
 fi
-echo -e "${GREEN}✅ PostgreSQL is ready${NC}"
 
-# Run migrations
-echo -e "\n${YELLOW}🗄️  Running database migrations...${NC}"
-npm run db:migrate
-echo -e "${GREEN}✅ Migrations complete${NC}"
+#  7. N8N 
+echo -e "\n${YELLOW}>> Starting n8n...${NC}"
+docker compose up -d n8n 2>/dev/null || docker-compose up -d n8n
+echo -e "${GREEN}  [OK] n8n at http://localhost:5678 (admin / admin123)${NC}"
 
-# Start n8n
-echo -e "\n${YELLOW}🔄 Starting n8n...${NC}"
-docker-compose up -d n8n
-echo -e "${GREEN}✅ n8n started at http://localhost:5678${NC}"
-
+#  8. DONE 
 echo -e "\n${GREEN}"
-echo "╔═══════════════════════════════════════╗"
-echo "║       ✅ Setup Complete!               ║"
-echo "╚═══════════════════════════════════════╝"
+echo "============================================"
+echo "     Setup Complete!"
+echo "============================================"
 echo -e "${NC}"
-echo -e "Run ${BLUE}npm run dev${NC} to start development servers"
+echo -e "  Run ${BLUE}npm run dev${NC} to start"
 echo ""
-echo -e "  Frontend:  ${BLUE}http://localhost:3000${NC}"
-echo -e "  Backend:   ${BLUE}http://localhost:3001${NC}"
-echo -e "  API Docs:  ${BLUE}http://localhost:3001/api/docs${NC}"
-echo -e "  n8n:       ${BLUE}http://localhost:5678${NC} (admin/admin123)"
+echo -e "  Frontend : ${BLUE}http://localhost:3000${NC}"
+echo -e "  Backend  : ${BLUE}http://localhost:3001${NC}"
+echo -e "  Swagger  : ${BLUE}http://localhost:3001/api/docs${NC}"
+echo -e "  n8n      : ${BLUE}http://localhost:5678${NC}  (admin / admin123)"
 echo ""
