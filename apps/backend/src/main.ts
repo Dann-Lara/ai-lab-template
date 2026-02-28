@@ -8,19 +8,15 @@ import { AppModule } from './app.module';
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
-  // Security
   app.use(helmet());
 
-  // CORS
   app.enableCors({
     origin: process.env['CORS_ORIGINS']?.split(',') ?? ['http://localhost:3000'],
     credentials: true,
   });
 
-  // API Versioning
   app.enableVersioning({ type: VersioningType.URI });
 
-  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -30,7 +26,6 @@ async function bootstrap(): Promise<void> {
     }),
   );
 
-  // Swagger docs
   if (process.env['NODE_ENV'] !== 'production') {
     const config = new DocumentBuilder()
       .setTitle('AI Lab API')
