@@ -54,7 +54,7 @@ export function Navbar({ variant = 'public' }: { variant?: 'public' | 'admin' | 
       {/* ── Main Navbar ──────────────────────────────────────── */}
       <nav className={`fixed w-full z-[100] transition-all duration-500
         ${scrolled || isDashboard
-          ? 'border-b border-slate-800 bg-slate-950/95 backdrop-blur-md'
+          ? 'border-b border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md'
           : 'bg-transparent border-b border-transparent'
         }`}>
         <div className="max-w-[1400px] mx-auto px-6 md:px-12 h-14 flex items-center justify-between">
@@ -124,7 +124,7 @@ export function Navbar({ variant = 'public' }: { variant?: 'public' | 'admin' | 
 
               {/* Theme toggle */}
               <button onClick={toggleTheme} aria-label="Toggle theme"
-                className="p-2 text-slate-400 hover:text-sky-400 hover:bg-slate-800 rounded-md transition-all">
+                className="p-2 text-slate-400 hover:text-sky-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-all">
                 {theme === 'dark' ? (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="4"/>
@@ -173,7 +173,7 @@ export function Navbar({ variant = 'public' }: { variant?: 'public' | 'admin' | 
       </nav>
 
       {/* ── Mobile Menu ──────────────────────────────────────── */}
-      <div className={`fixed inset-0 z-[150] flex flex-col bg-slate-950/98 backdrop-blur-xl
+      <div className={`fixed inset-0 z-[150] flex flex-col bg-white/98 dark:bg-slate-950/98 backdrop-blur-xl
                        transition-transform duration-500 ease-[cubic-bezier(0.77,0,0.175,1)]
                        ${menuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
 
@@ -198,7 +198,7 @@ export function Navbar({ variant = 'public' }: { variant?: 'public' | 'admin' | 
                   <span className="font-mono text-[10px] text-sky-400 opacity-30 group-hover:opacity-100 transition-opacity mb-1">
                     0{i + 1}
                   </span>
-                  <span className="headline text-5xl text-slate-100 group-hover:text-sky-400 group-hover:italic transition-all">
+                  <span className="headline text-5xl text-slate-800 dark:text-slate-100 group-hover:text-sky-500 dark:group-hover:text-sky-400 group-hover:italic transition-all">
                     {t.nav[labelKey] as string}
                   </span>
                 </Link>
@@ -242,7 +242,7 @@ export function Navbar({ variant = 'public' }: { variant?: 'public' | 'admin' | 
         </div>
 
         {/* Mobile footer */}
-        <div className="px-10 pb-10 pt-6 border-t border-slate-800 flex justify-between items-end">
+        <div className="px-10 pb-10 pt-6 border-t border-slate-200 dark:border-slate-800 flex justify-between items-end">
           <div className="font-mono text-[9px] uppercase tracking-widest text-slate-600 leading-relaxed">
             AI Lab<br/><span className="text-sky-600">Template</span>
           </div>

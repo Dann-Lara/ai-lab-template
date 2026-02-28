@@ -37,7 +37,18 @@ body {
   color: var(--text);
   font-family: var(--font-sans, system-ui);
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Light mode overrides for pages that use Tailwind slate-950 (dark-first design) */
+/* Light mode pages get a softer slate-50 background */
+html:not(.dark) .page-bg {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+html:not(.dark) .page-bg-card {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
 }
 
 /* ── Components ───────────────────────────────────────────────── */

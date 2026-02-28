@@ -26,7 +26,7 @@ export function Footer(): React.JSX.Element {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="w-full bg-slate-950 border-t border-slate-800/50 relative overflow-hidden">
+    <footer className="w-full bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800/50 relative overflow-hidden">
       {/* Bg glow */}
       <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[200px]
                       bg-sky-500/5 blur-[80px] rounded-full pointer-events-none" />
@@ -39,7 +39,7 @@ export function Footer(): React.JSX.Element {
             <div className="font-mono text-sky-400 text-xs tracking-widest">
               &gt;_ AI.Lab <span className="text-slate-600">// template</span>
             </div>
-            <p className="font-mono text-[10px] text-slate-500 leading-relaxed max-w-[220px]">
+            <p className="font-mono text-[10px] text-slate-400 dark:text-slate-500 leading-relaxed max-w-[220px]">
               {t.footer.description}
             </p>
             <div className="flex gap-4">
@@ -66,8 +66,8 @@ export function Footer(): React.JSX.Element {
               ].map(({ href, label }) => (
                 <li key={href}>
                   <Link href={href}
-                    className="font-mono text-[10px] uppercase tracking-widest text-slate-500
-                               hover:text-sky-400 flex items-center gap-2 group transition-colors">
+                    className="font-mono text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-500
+                               hover:text-sky-600 dark:hover:text-sky-400 flex items-center gap-2 group transition-colors">
                     <span className="w-0 group-hover:w-3 h-px bg-sky-400 transition-all" />
                     {label}
                   </Link>
@@ -84,8 +84,8 @@ export function Footer(): React.JSX.Element {
             <ul className="space-y-3">
               {['Next.js 14', 'NestJS', 'LangChain', 'n8n', 'TypeScript', 'Docker'].map((tech) => (
                 <li key={tech}
-                  className="font-mono text-[10px] uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400/40" />{tech}
+                  className="font-mono text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400/60 dark:bg-sky-400/40" />{tech}
                 </li>
               ))}
             </ul>
@@ -101,13 +101,13 @@ export function Footer(): React.JSX.Element {
                 <span className="mt-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse-slow
                                  shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
                 <div>
-                  <p className="font-mono text-[10px] text-slate-300 font-bold">{t.footer.statusMsg}</p>
-                  <p className="font-mono text-[9px] text-slate-600 uppercase tracking-widest mt-1">
+                  <p className="font-mono text-[10px] text-slate-700 dark:text-slate-300 font-bold">{t.footer.statusMsg}</p>
+                  <p className="font-mono text-[9px] text-slate-500 dark:text-slate-600 uppercase tracking-widest mt-1">
                     {t.footer.location}
                   </p>
                 </div>
               </div>
-              <div className="font-mono text-[9px] text-slate-700 italic">v1.0.0_build</div>
+              <div className="font-mono text-[9px] text-slate-400 dark:text-slate-700 italic">v1.0.0_build</div>
               <Link href="http://localhost:3001/api/docs" target="_blank" rel="noopener noreferrer"
                 className="inline-block font-mono text-[9px] text-sky-600 hover:text-sky-400
                            border border-sky-900/50 hover:border-sky-600/50 rounded px-3 py-1.5
@@ -119,12 +119,12 @@ export function Footer(): React.JSX.Element {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-16 pt-8 border-t border-slate-800/50 flex flex-col md:flex-row
+        <div className="mt-16 pt-8 border-t border-slate-200 dark:border-slate-800/50 flex flex-col md:flex-row
                         justify-between items-center gap-4">
-          <p className="font-mono text-[9px] text-slate-600 uppercase tracking-[0.3em]">
+          <p className="font-mono text-[9px] text-slate-500 dark:text-slate-600 uppercase tracking-[0.3em]">
             © {year} AI Lab Template <span className="mx-2 opacity-30">|</span> {t.footer.rights}
           </p>
-          <p className="font-mono text-[9px] text-slate-700 uppercase tracking-[0.3em]">
+          <p className="font-mono text-[9px] text-slate-500 dark:text-slate-700 uppercase tracking-[0.3em]">
             {t.footer.madeWith} <span className="text-sky-700">♥</span>
           </p>
         </div>

@@ -12,7 +12,7 @@ function StatCard({ label, value, sub, accent = false }: { label: string; value:
     <div className={`p-5 rounded-xl border transition-all
       ${accent
         ? 'border-sky-500/30 bg-sky-500/5 hover:border-sky-500/50'
-        : 'border-slate-800 bg-slate-900/40 hover:border-slate-700'
+        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 hover:border-slate-700'
       }`}>
       <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-slate-600 mb-3">{label}</p>
       <p className={`font-mono text-3xl font-bold ${accent ? 'text-sky-400' : 'text-white'}`}>{value}</p>
@@ -41,13 +41,13 @@ export default function AdminDashboard(): React.JSX.Element {
                                                  : 'text-sky-400 border-sky-400/30 bg-sky-400/5';
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <Navbar variant="admin" />
 
       <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-20 pb-16">
 
         {/* Header */}
-        <div className="py-10 border-b border-slate-800/60 mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="py-10 border-b border-slate-200 dark:border-slate-200/80 dark:border-slate-800/60 mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-3">
             <p className="font-mono text-[10px] text-slate-600 uppercase tracking-[0.4em]">
               {t.dashboard.adminTitle}
@@ -79,7 +79,7 @@ export default function AdminDashboard(): React.JSX.Element {
         </div>
 
         {/* Tab nav */}
-        <div className="flex gap-1 mb-8 border-b border-slate-800">
+        <div className="flex gap-1 mb-8 border-b border-slate-200 dark:border-slate-800">
           {[
             { id: 'ai',     label: 'AI Tools' },
             { id: 'system', label: 'System Info' },
@@ -128,11 +128,11 @@ export default function AdminDashboard(): React.JSX.Element {
               { label: 'API Docs',   value: 'Swagger',       port: '3001/api/docs' },
             ].map(({ label, value, port }) => (
               <div key={label}
-                className="flex items-center justify-between p-4 rounded-xl border border-slate-800
-                           bg-slate-900/40 hover:border-slate-700 transition-all group">
+                className="flex items-center justify-between p-4 rounded-xl border border-slate-200 dark:border-slate-800
+                           bg-white dark:bg-slate-900/40 hover:border-slate-700 transition-all group">
                 <div>
                   <p className="font-mono text-[9px] uppercase tracking-widest text-slate-600">{label}</p>
-                  <p className="font-mono text-sm text-slate-300 mt-0.5">{value}</p>
+                  <p className="font-mono text-sm text-slate-700 dark:text-slate-300 mt-0.5">{value}</p>
                 </div>
                 <a href={`http://localhost:${port}`} target="_blank" rel="noopener noreferrer"
                   className="font-mono text-[10px] text-slate-700 group-hover:text-sky-500 transition-colors">

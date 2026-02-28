@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { Space_Mono, Bebas_Neue, Inter_Tight } from 'next/font/google';
+import { Bebas_Neue, Space_Mono, Inter_Tight } from 'next/font/google';
 import { I18nProvider } from '../lib/i18n-context';
-import { ThemeProvider } from '../components/ui/ThemeProvider';
+import { ThemeProvider, ThemeScript } from '../components/ui/ThemeProvider';
 import './globals.css';
 
 const bebasNeue = Bebas_Neue({
@@ -10,14 +10,12 @@ const bebasNeue = Bebas_Neue({
   variable: '--font-headline',
   display: 'swap',
 });
-
 const spaceMono = Space_Mono({
   weight: ['400', '700'],
   subsets: ['latin'],
   variable: '--font-mono',
   display: 'swap',
 });
-
 const interTight = Inter_Tight({
   subsets: ['latin'],
   variable: '--font-sans',
@@ -29,13 +27,13 @@ export const metadata: Metadata = {
   description: 'Fullstack AI Lab Template — Next.js + NestJS + LangChain + n8n',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}): React.JSX.Element {
+export default function RootLayout({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
-    <html suppressHydrationWarning className="dark">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* Runs before React hydrates — sets dark/light class immediately, no flash */}
+        <ThemeScript />
+      </head>
       <body className={`${bebasNeue.variable} ${spaceMono.variable} ${interTight.variable} font-sans`}>
         <I18nProvider>
           <ThemeProvider>

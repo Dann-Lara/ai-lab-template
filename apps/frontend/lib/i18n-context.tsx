@@ -12,19 +12,29 @@ interface I18nContextValue {
   setLocale: (locale: Locale) => void;
 }
 
+// Read locale synchronously on module init (client-side only)
+// This runs before the first render, so no language flash
+function getInitialLocale(): Locale {
+  if (typeof document === 'undefined') return defaultLocale;
+  return getStoredLocale();
+}
+
+const initialLocale = getInitialLocale();
+
 const I18nContext = createContext<I18nContextValue>({
-  locale: defaultLocale,
-  t: getMessages(defaultLocale),
+  locale: initialLocale,
+  t: getMessages(initialLocale),
   setLocale: () => {},
 });
 
 export function I18nProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   useEffect(() => {
-    // Read from cookie on mount (client-side only)
-    setLocaleState(getStoredLocale());
-  }, []);
+    // Re-read on mount in case cookie changed between SSR and hydration
+    const stored = getStoredLocale();
+    if (stored !== locale) setLocaleState(stored);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function setLocale(next: Locale): void {
     setStoredLocale(next);
