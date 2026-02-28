@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getStoredUser, getAccessToken, clearTokens, getDashboardPath, type AuthUser } from '../lib/auth';
 
@@ -8,8 +8,15 @@ export function useAuth(requiredRoles?: string[]) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  // Serialize requiredRoles to a stable string so it never changes reference
+  const rolesKey = requiredRoles?.join(',') ?? '';
+  // Use a ref to prevent running the auth check more than once
+  const checked = useRef(false);
 
   useEffect(() => {
+    if (checked.current) return;
+    checked.current = true;
+
     const token = getAccessToken();
     const stored = getStoredUser();
 
@@ -19,7 +26,7 @@ export function useAuth(requiredRoles?: string[]) {
       return;
     }
 
-    if (requiredRoles && !requiredRoles.includes(stored.role)) {
+    if (rolesKey && !rolesKey.split(',').includes(stored.role)) {
       setLoading(false);
       router.replace(getDashboardPath(stored.role));
       return;
@@ -27,7 +34,7 @@ export function useAuth(requiredRoles?: string[]) {
 
     setUser(stored);
     setLoading(false);
-  }, [router, requiredRoles]);
+  }, [router, rolesKey]); // rolesKey is a stable string, not an array
 
   function logout() {
     clearTokens();

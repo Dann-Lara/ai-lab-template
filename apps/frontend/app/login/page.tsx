@@ -68,10 +68,10 @@ export default function LoginPage(): React.JSX.Element {
           <p className="font-mono text-[10px] text-sky-500 dark:text-sky-400 uppercase tracking-[0.4em] mb-6 opacity-60">
             Auth / Login
           </p>
-          <h1 className="headline text-8xl text-slate-900 dark:text-white leading-none mb-6">
+          <h1 className="headline text-8xl text-slate-900 dark:text-white leading-none mb-6" suppressHydrationWarning>
             {t.auth.loginTitle}
           </h1>
-          <p className="font-mono text-[12px] text-slate-500 leading-relaxed max-w-xs">
+          <p className="font-mono text-[12px] text-slate-500 leading-relaxed max-w-xs" suppressHydrationWarning>
             {t.auth.loginSub}
           </p>
         </div>
@@ -90,8 +90,8 @@ export default function LoginPage(): React.JSX.Element {
           </Link>
 
           <div className="mb-10">
-            <h2 className="headline text-4xl text-slate-900 dark:text-white mb-2">{t.auth.loginTitle}</h2>
-            <p className="font-mono text-[11px] text-slate-500">{t.auth.loginSub}</p>
+            <h2 className="headline text-4xl text-slate-900 dark:text-white mb-2" suppressHydrationWarning>{t.auth.loginTitle}</h2>
+            <p className="font-mono text-[11px] text-slate-500" suppressHydrationWarning>{t.auth.loginSub}</p>
           </div>
 
           <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-5">

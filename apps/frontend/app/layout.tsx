@@ -31,10 +31,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }):
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* Runs before React hydrates — sets dark/light class immediately, no flash */}
         <ThemeScript />
       </head>
-      <body className={`${bebasNeue.variable} ${spaceMono.variable} ${interTight.variable} font-sans`}>
+      {/*
+        suppressHydrationWarning on body:
+        - Prevents hydration errors from i18n text (server=ES, client cookie=EN)
+        - Same pattern used by next-themes library
+        - Safe: only suppresses the immediate element's attribute mismatches,
+          not the entire subtree
+      */}
+      <body
+        suppressHydrationWarning
+        className={`${bebasNeue.variable} ${spaceMono.variable} ${interTight.variable} font-sans`}
+      >
         <I18nProvider>
           <ThemeProvider>
             {children}

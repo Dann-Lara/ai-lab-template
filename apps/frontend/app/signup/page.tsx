@@ -99,7 +99,7 @@ export default function SignupPage(): React.JSX.Element {
           <p className="font-mono text-[10px] text-sky-400 uppercase tracking-[0.4em] mb-6 opacity-60">
             Auth / Signup
           </p>
-          <h1 className="headline text-8xl text-white leading-none mb-6">
+          <h1 className="headline text-8xl text-white leading-none mb-6" suppressHydrationWarning>
             {t.auth.signupTitle}
           </h1>
           <p className="font-mono text-[12px] text-slate-500 leading-relaxed max-w-xs">
@@ -136,7 +136,7 @@ export default function SignupPage(): React.JSX.Element {
           </Link>
 
           <div className="mb-10">
-            <h2 className="headline text-4xl text-white mb-2">{t.auth.signupTitle}</h2>
+            <h2 className="headline text-4xl text-white mb-2" suppressHydrationWarning>{t.auth.signupTitle}</h2>
             <p className="font-mono text-[11px] text-slate-500">{t.auth.signupSub}</p>
           </div>
 
