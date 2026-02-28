@@ -1,24 +1,36 @@
 import type { Metadata } from 'next';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale, getMessages } from 'next-intl/server';
 import { Inter } from 'next/font/google';
 
+import { ThemeProvider } from '../components/ui/ThemeProvider';
+import { Navbar } from '../components/ui/Navbar';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: process.env['NEXT_PUBLIC_APP_NAME'] ?? 'AI Lab',
+  title: 'AI Lab',
   description: 'Fullstack AI Lab Template — Next.js + NestJS + LangChain + n8n',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
-}): React.JSX.Element {
+}): Promise<React.JSX.Element> {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <main>{children}</main>
+    <html lang={locale} suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans bg-white dark:bg-slate-900 min-h-screen`}>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ThemeProvider>
+            <Navbar />
+            <main>{children}</main>
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

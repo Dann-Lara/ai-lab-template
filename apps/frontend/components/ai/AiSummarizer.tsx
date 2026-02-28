@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 
 export function AiSummarizer(): React.JSX.Element {
+  const t = useTranslations('ai');
   const [text, setText] = useState('');
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,7 +24,7 @@ export function AiSummarizer(): React.JSX.Element {
       const data = await res.json() as { result: string };
       setResult(data.result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Error');
     } finally {
       setLoading(false);
     }
@@ -31,27 +33,38 @@ export function AiSummarizer(): React.JSX.Element {
   return (
     <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Text to Summarize *</label>
+        <label className="label">{t('textToSummarize')} *</label>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Paste the text you want to summarize..."
+          placeholder={t('textToSummarizePlaceholder')}
           rows={6}
-          className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+          className="input resize-none"
         />
       </div>
-      <button
-        type="submit"
-        disabled={loading || !text.trim()}
-        className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-300 text-white rounded-lg font-medium transition-colors"
-      >
-        {loading ? 'Summarizing...' : 'Summarize'}
+      <button type="submit" disabled={loading || !text.trim()} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500
+                 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg
+                 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2
+                 dark:focus:ring-offset-slate-900">
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            {t('summarizing')}
+          </span>
+        ) : t('summarize')}
       </button>
-      {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>}
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800
+                        text-red-700 dark:text-red-400 text-sm animate-fade-in">
+          {error}
+        </div>
+      )}
       {result && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-          <p className="text-sm text-emerald-600 mb-1 font-medium">Summary:</p>
-          <p className="text-slate-800 text-sm leading-relaxed">{result}</p>
+        <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 animate-fade-in">
+          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-2 uppercase tracking-wide">
+            {t('summary')}
+          </p>
+          <p className="text-slate-800 dark:text-slate-200 text-sm leading-relaxed">{result}</p>
         </div>
       )}
     </form>

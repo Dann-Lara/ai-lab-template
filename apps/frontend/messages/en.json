@@ -1,0 +1,50 @@
+{
+  "common": {
+    "appName": "AI Lab",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "language": "Language"
+  },
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "apiDocs": "API Docs",
+    "n8n": "Workflows (n8n)"
+  },
+  "home": {
+    "title": "AI Lab Template",
+    "subtitle": "Next.js · NestJS · LangChain · n8n · Turborepo",
+    "openDashboard": "Open Dashboard",
+    "apiDocs": "API Docs (Swagger)",
+    "n8nWorkflows": "n8n Workflows",
+    "featureAi": "AI Generation",
+    "featureAutomations": "Automations",
+    "featureSecurity": "Auth & Security"
+  },
+  "dashboard": {
+    "title": "AI Lab Dashboard",
+    "generatorTitle": "Text Generator",
+    "summarizerTitle": "Text Summarizer"
+  },
+  "ai": {
+    "systemMessage": "System Message (optional)",
+    "systemMessagePlaceholder": "You are a helpful assistant...",
+    "prompt": "Prompt",
+    "promptPlaceholder": "Write your prompt here...",
+    "temperature": "Temperature",
+    "generate": "Generate",
+    "generating": "Generating...",
+    "result": "Result",
+    "textToSummarize": "Text to Summarize",
+    "textToSummarizePlaceholder": "Paste the text you want to summarize...",
+    "summarize": "Summarize",
+    "summarizing": "Summarizing...",
+    "summary": "Summary"
+  }
+}

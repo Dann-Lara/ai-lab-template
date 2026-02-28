@@ -2,14 +2,84 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── CSS Variables: Light / Dark ─────────────────────────────── */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --bg-primary:    #ffffff;
+  --bg-secondary:  #f8fafc;
+  --bg-card:       #ffffff;
+  --border:        #e2e8f0;
+  --text-primary:  #0f172a;
+  --text-secondary:#475569;
+  --text-muted:    #94a3b8;
+  --brand:         #2563eb;
+  --brand-light:   #dbeafe;
+  --shadow:        0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --shadow-md:     0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --shadow-lg:     0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb)))
-    rgb(var(--background-start-rgb));
+.dark {
+  --bg-primary:    #0f172a;
+  --bg-secondary:  #1e293b;
+  --bg-card:       #1e293b;
+  --border:        #334155;
+  --text-primary:  #f1f5f9;
+  --text-secondary:#94a3b8;
+  --text-muted:    #64748b;
+  --brand:         #3b82f6;
+  --brand-light:   #1e3a8a;
+  --shadow:        0 1px 3px 0 rgb(0 0 0 / 0.4);
+  --shadow-md:     0 4px 6px -1px rgb(0 0 0 / 0.4);
+  --shadow-lg:     0 10px 15px -3px rgb(0 0 0 / 0.4);
 }
+
+/* ── Base ─────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  font-family: Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Utility Classes ──────────────────────────────────────────── */
+@layer components {
+  .card {
+    @apply rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 shadow-sm;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2.5 bg-brand-600 hover:bg-brand-500 active:bg-brand-700
+           text-white font-medium rounded-lg transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2
+           dark:focus:ring-offset-slate-900;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2.5 bg-slate-100 hover:bg-slate-200 active:bg-slate-300
+           dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-100
+           text-slate-700 font-medium rounded-lg transition-all duration-150
+           focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2;
+  }
+
+  .input {
+    @apply w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300
+           dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100
+           bg-white text-slate-900 placeholder-slate-400
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
+           transition-all duration-150;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1;
+  }
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }

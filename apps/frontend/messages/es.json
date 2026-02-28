@@ -1,0 +1,50 @@
+{
+  "common": {
+    "appName": "AI Lab",
+    "loading": "Cargando...",
+    "error": "Ocurrió un error",
+    "retry": "Reintentar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "darkMode": "Modo oscuro",
+    "lightMode": "Modo claro",
+    "language": "Idioma"
+  },
+  "nav": {
+    "home": "Inicio",
+    "dashboard": "Panel",
+    "apiDocs": "Docs API",
+    "n8n": "Flujos (n8n)"
+  },
+  "home": {
+    "title": "AI Lab Template",
+    "subtitle": "Next.js · NestJS · LangChain · n8n · Turborepo",
+    "openDashboard": "Abrir Panel",
+    "apiDocs": "Docs API (Swagger)",
+    "n8nWorkflows": "Flujos n8n",
+    "featureAi": "Generación IA",
+    "featureAutomations": "Automatizaciones",
+    "featureSecurity": "Auth y Seguridad"
+  },
+  "dashboard": {
+    "title": "Panel de AI Lab",
+    "generatorTitle": "Generador de Texto",
+    "summarizerTitle": "Resumidor de Texto"
+  },
+  "ai": {
+    "systemMessage": "Mensaje de sistema (opcional)",
+    "systemMessagePlaceholder": "Eres un asistente útil...",
+    "prompt": "Prompt",
+    "promptPlaceholder": "Escribe tu prompt aquí...",
+    "temperature": "Temperatura",
+    "generate": "Generar",
+    "generating": "Generando...",
+    "result": "Resultado",
+    "textToSummarize": "Texto a resumir",
+    "textToSummarizePlaceholder": "Pega el texto que deseas resumir...",
+    "summarize": "Resumir",
+    "summarizing": "Resumiendo...",
+    "summary": "Resumen"
+  }
+}

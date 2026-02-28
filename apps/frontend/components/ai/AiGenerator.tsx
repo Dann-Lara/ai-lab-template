@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-
+import { useTranslations } from 'next-intl';
 import type { AiGenerateRequest, AiGenerateResponse } from '@ai-lab/shared';
 
 export function AiGenerator(): React.JSX.Element {
+  const t = useTranslations('ai');
   const [prompt, setPrompt] = useState('');
   const [systemMessage, setSystemMessage] = useState('');
   const [temperature, setTemperature] = useState(0.7);
@@ -15,25 +16,23 @@ export function AiGenerator(): React.JSX.Element {
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!prompt.trim()) return;
-
-    setLoading(true);
-    setError('');
-    setResult('');
-
+    setLoading(true); setError(''); setResult('');
     try {
-      const body: AiGenerateRequest = { prompt, systemMessage: systemMessage || undefined, temperature };
+      const body: AiGenerateRequest = {
+        prompt,
+        systemMessage: systemMessage || undefined,
+        temperature,
+      };
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const data = await res.json() as AiGenerateResponse;
       setResult(data.result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : t('error', { ns: 'common' }));
     } finally {
       setLoading(false);
     }
@@ -42,57 +41,59 @@ export function AiGenerator(): React.JSX.Element {
   return (
     <form onSubmit={(e) => { void handleSubmit(e); }} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">System Message (optional)</label>
+        <label className="label">{t('systemMessage')}</label>
         <input
           type="text"
           value={systemMessage}
           onChange={(e) => setSystemMessage(e.target.value)}
-          placeholder="You are a helpful assistant..."
-          className="w-full p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          placeholder={t('systemMessagePlaceholder')}
+          className="input"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Prompt *</label>
+        <label className="label">{t('prompt')} *</label>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Write your prompt here..."
+          placeholder={t('promptPlaceholder')}
           rows={4}
-          className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+          className="input resize-none"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">
-          Temperature: {temperature}
+        <label className="label">
+          {t('temperature')}: <span className="font-mono text-brand-600 dark:text-brand-400">{temperature}</span>
         </label>
-        <input
-          type="range"
-          min="0" max="2" step="0.1"
-          value={temperature}
+        <input type="range" min="0" max="2" step="0.1" value={temperature}
           onChange={(e) => setTemperature(parseFloat(e.target.value))}
-          className="w-full"
+          className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none
+                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4
+                     [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full
+                     [&::-webkit-slider-thumb]:bg-brand-600 cursor-pointer"
         />
       </div>
-      <button
-        type="submit"
-        disabled={loading || !prompt.trim()}
-        className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-300 text-white rounded-lg font-medium transition-colors"
-      >
+      <button type="submit" disabled={loading || !prompt.trim()} className="btn-primary w-full">
         {loading ? (
           <span className="flex items-center justify-center gap-2">
-            <span className="animate-spin">⟳</span> Generating...
+            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            {t('generating')}
           </span>
-        ) : 'Generate'}
+        ) : t('generate')}
       </button>
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800
+                        text-red-700 dark:text-red-400 text-sm animate-fade-in">
           {error}
         </div>
       )}
       {result && (
-        <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-          <p className="text-sm text-slate-500 mb-1">Result:</p>
-          <p className="text-slate-800 whitespace-pre-wrap text-sm leading-relaxed">{result}</p>
+        <div className="p-4 rounded-lg bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800/50 animate-fade-in">
+          <p className="text-xs font-medium text-brand-600 dark:text-brand-400 mb-2 uppercase tracking-wide">
+            {t('result')}
+          </p>
+          <p className="text-slate-800 dark:text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">
+            {result}
+          </p>
         </div>
       )}
     </form>

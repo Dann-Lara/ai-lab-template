@@ -13,7 +13,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
     // Config
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
 
-    // Database
+    // Database — retries gracefully while Docker starts
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -22,6 +22,9 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
         autoLoadEntities: true,
         synchronize: config.get('NODE_ENV') === 'development',
         logging: config.get('NODE_ENV') === 'development',
+        retryAttempts: 10,
+        retryDelay: 3000,
+        connectTimeoutMS: 10000,
       }),
     }),
 

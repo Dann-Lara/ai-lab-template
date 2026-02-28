@@ -1,71 +1,106 @@
-# Contributing Guide
+# Contributing Guide / Guía de Contribución
 
-## Development Setup
+## Setup / Configuración
 
-Follow the [README Quick Start](README.md#-quick-start) to get the project running.
+Follow the [README Quick Start](README.md#quick-start--inicio-rápido).
 
-## Commit Convention
+> **Important / Importante:** Run `npm run docker:up` before `npm run dev` — the backend needs PostgreSQL.
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/).
+---
+
+## Commit Convention / Convención de Commits
+
+[Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-<type>(<scope>): <subject>
-
-# Examples:
-feat(backend): add user authentication endpoint
-fix(frontend): resolve hydration mismatch in AiGenerator
-chore(docker): update postgres image to 16.3
-docs(ai-core): add chain usage examples
-test(backend): add integration tests for AI module
-refactor(shared): simplify AiGenerateRequest type
+feat(frontend): add dark mode toggle
+fix(backend): handle DB connection timeout
+chore(docker): update postgres to 16.3
+docs(ai-core): add summarization examples
+i18n(frontend): add French locale messages
 ```
 
 **Allowed scopes:** `frontend`, `backend`, `ai-core`, `shared`, `n8n`, `docker`, `ci`, `deps`, `config`
 
-## Branching Strategy
+---
 
-- `main` — production-ready code
-- `develop` — integration branch
-- `feat/<scope>/<description>` — new features
+## Internationalization / Internacionalización
+
+### Adding translations / Agregando traducciones
+1. Add keys to `apps/frontend/messages/en.json` AND `es.json`
+2. Access in components: `const t = useTranslations('namespace')`
+3. For server components: `import { useTranslations } from 'next-intl'`
+4. For client components: same import but with `'use client'`
+
+### Adding a new language / Agregar nuevo idioma
+```typescript
+// apps/frontend/lib/i18n.ts
+export const locales = ['en', 'es', 'fr'] as const; // add here
+
+// apps/frontend/messages/fr.json  ← create this file
+// apps/frontend/components/ui/LanguageSwitcher.tsx ← add label
+```
+
+---
+
+## Theming / Temas
+
+Use CSS utility classes defined in `globals.css`:
+- `.card` — white/dark-aware card container
+- `.btn-primary` — blue primary button
+- `.btn-secondary` — neutral secondary button
+- `.input` — dark-aware text input
+- `.label` — form label
+
+Always pair light/dark variants:
+```tsx
+className="bg-white dark:bg-slate-900"
+className="text-slate-900 dark:text-slate-100"
+className="border-slate-200 dark:border-slate-700"
+```
+
+---
+
+## Animations / Animaciones
+
+Use hooks from `apps/frontend/hooks/useAnime.ts`:
+- `useFadeInUp(options)` — fade + slide up entrance
+- `useStaggerIn(options)` — staggered children entrance
+
+Add new animations in `tailwind.config.ts` under `keyframes` + `animation`.
+
+---
+
+## Adding a Backend Module / Agregar módulo NestJS
+
+```bash
+# 1. Create structure
+mkdir -p apps/backend/src/modules/my-feature/{dto}
+
+# 2. Create: my-feature.module.ts, my-feature.service.ts, my-feature.controller.ts
+# 3. Register in apps/backend/src/app.module.ts
+# 4. Add tests: my-feature.service.spec.ts
+```
+
+## Adding AI Capabilities / Agregar capacidades IA
+
+Add to `packages/ai-core/src/chains/` or `packages/ai-core/src/agents/`:
+
+```typescript
+// packages/ai-core/src/chains/my-chain.ts
+export async function myChain(input: string): Promise<string> {
+  const llm = getLLM({ temperature: 0.5 });
+  // ... LangChain logic
+}
+```
+
+Export from `packages/ai-core/src/index.ts`.
+
+---
+
+## Branching / Ramas
+
+- `main` — producción
+- `develop` — integración
+- `feat/<scope>/<description>` — nuevas features
 - `fix/<scope>/<description>` — bug fixes
-- `chore/<description>` — maintenance
-
-## Code Standards
-
-- **TypeScript strict mode** is enforced everywhere
-- All functions must have explicit return types
-- No `any` types — use `unknown` and type guards
-- Follow ESLint rules (auto-fixed on commit via lint-staged)
-- Write tests for all new services and components
-
-## Pull Request Process
-
-1. Branch from `develop`
-2. Write tests for your changes
-3. Ensure `npm run lint`, `npm run type-check`, and `npm run test` pass
-4. Open a PR to `develop` with a descriptive title
-5. Request a review
-
-## Adding a New Backend Module
-
-```bash
-# 1. Create the module structure
-mkdir -p apps/backend/src/modules/my-feature/{dto,entities}
-
-# 2. Create module, service, controller files
-# 3. Register in app.module.ts
-# 4. Add tests in *.spec.ts files
-```
-
-## Adding AI Capabilities
-
-Add new chains or agents to `packages/ai-core/src/`:
-
-```bash
-packages/ai-core/src/
-├── chains/       # Add new-chain.ts + new-chain.spec.ts
-├── agents/       # Add specialized agents
-└── prompts/      # Add prompt templates
-```
-
-Export from `packages/ai-core/src/index.ts` to make them available.
