@@ -1,5 +1,5 @@
-import { AiGenerator } from '@/components/ai/AiGenerator';
-import { AiSummarizer } from '@/components/ai/AiSummarizer';
+import { AiGenerator } from '../../components/ai/AiGenerator';
+import { AiSummarizer } from '../../components/ai/AiSummarizer';
 
 export default function DashboardPage(): React.JSX.Element {
   return (

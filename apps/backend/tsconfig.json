@@ -6,13 +6,28 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "outDir": "dist",
-    "rootDir": ".",
+    "rootDir": "../../",
+    "strictPropertyInitialization": false,
     "baseUrl": ".",
     "paths": {
       "@ai-lab/shared": ["../../packages/shared/src/index.ts"],
-      "@ai-lab/ai-core": ["../../packages/ai-core/src/index.ts"]
-    },
-    "strictPropertyInitialization": false
+      "@ai-lab/shared/*": ["../../packages/shared/src/*"],
+      "@ai-lab/ai-core": ["../../packages/ai-core/src/index.ts"],
+      "@ai-lab/ai-core/*": ["../../packages/ai-core/src/*"]
+    }
   },
-  "include": ["src", "../../packages/shared/src", "../../packages/ai-core/src"]
+  "include": [
+    "src/**/*",
+    "../../packages/shared/src/**/*.ts",
+    "../../packages/ai-core/src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test",
+    "**/*.spec.ts",
+    "**/*.e2e-spec.ts",
+    "../../packages/**/__tests__/**",
+    "../../packages/**/*.spec.ts"
+  ]
 }

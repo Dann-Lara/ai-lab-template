@@ -7,9 +7,11 @@
     "moduleResolution": "bundler",
     "jsx": "preserve",
     "incremental": true,
+    "allowJs": true,
+    "noEmit": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./"],
+      "@/*": ["./*"],
       "@ai-lab/shared": ["../../packages/shared/src/index.ts"]
     }
   },
