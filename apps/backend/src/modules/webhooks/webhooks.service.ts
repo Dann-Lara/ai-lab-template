@@ -12,9 +12,6 @@ export class WebhooksService {
     private readonly configService: ConfigService,
   ) {}
 
-  /**
-   * Trigger an n8n workflow via webhook
-   */
   async triggerN8nWorkflow(
     webhookPath: string,
     payload: Record<string, unknown>,
@@ -34,16 +31,12 @@ export class WebhooksService {
       );
       this.logger.log(`n8n webhook triggered: ${webhookPath}`);
     } catch (error) {
-      this.logger.error(`Failed to trigger n8n webhook: ${webhookPath}`, error);
-      // Don't throw — webhooks are fire-and-forget
+      this.logger.warn(`Failed to trigger n8n webhook: ${webhookPath} — ${String(error)}`);
     }
   }
 
-  /**
-   * Validate incoming webhook secret from n8n
-   */
   validateWebhookSecret(secret: string): boolean {
-    const expectedSecret = this.configService.get<string>('N8N_WEBHOOK_SECRET', '');
-    return secret === expectedSecret;
+    const expected = this.configService.get<string>('N8N_WEBHOOK_SECRET', '');
+    return secret === expected;
   }
 }

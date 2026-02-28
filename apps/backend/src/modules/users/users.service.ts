@@ -18,12 +18,18 @@ export class UsersService {
     if (existing) throw new ConflictException('Email already in use');
 
     const passwordHash = await bcrypt.hash(dto.password, 12);
-    const user = this.userRepo.create({ ...dto, passwordHash });
+    const user = this.userRepo.create({
+      email: dto.email,
+      name: dto.name,
+      passwordHash,
+    });
     return this.userRepo.save(user);
   }
 
   async findAll(): Promise<UserEntity[]> {
-    return this.userRepo.find({ select: ['id', 'email', 'name', 'role', 'createdAt'] });
+    return this.userRepo.find({
+      select: ['id', 'email', 'name', 'role', 'createdAt'],
+    });
   }
 
   async findOne(id: string): Promise<UserEntity> {
@@ -36,6 +42,9 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<UserEntity | null> {
-    return this.userRepo.findOne({ where: { email }, select: ['id', 'email', 'name', 'role', 'passwordHash', 'isActive'] });
+    return this.userRepo.findOne({
+      where: { email },
+      select: ['id', 'email', 'name', 'role', 'passwordHash', 'isActive'],
+    });
   }
 }

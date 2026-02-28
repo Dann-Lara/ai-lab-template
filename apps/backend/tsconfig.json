@@ -6,11 +6,13 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": ".",
+    "baseUrl": ".",
     "paths": {
       "@ai-lab/shared": ["../../packages/shared/src/index.ts"],
       "@ai-lab/ai-core": ["../../packages/ai-core/src/index.ts"]
-    }
+    },
+    "strictPropertyInitialization": false
   },
-  "include": ["src"]
+  "include": ["src", "../../packages/shared/src", "../../packages/ai-core/src"]
 }

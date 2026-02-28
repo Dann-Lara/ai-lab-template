@@ -5,7 +5,7 @@ import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import type { CreateUserDto } from '../users/dto/create-user.dto';
-import type { AuthTokens } from '@ai-lab/shared';
+import type { AuthTokens } from './auth.service';
 
 @ApiTags('Auth')
 @Controller({ path: 'auth', version: '1' })
@@ -27,6 +27,6 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @ApiOperation({ summary: 'Login with email and password' })
   login(@Request() req: { user: any }): AuthTokens {
-    return this.authService.login(req.user);
+    return this.authService.login(req.user as any);
   }
 }

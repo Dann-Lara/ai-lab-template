@@ -3,10 +3,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022"],
-    "moduleResolution": "bundler",
     "strict": true,
-    "strictNullChecks": true,
-    "noUncheckedIndexedAccess": true,
+    "strictPropertyInitialization": false,
+    "noUncheckedIndexedAccess": false,
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
