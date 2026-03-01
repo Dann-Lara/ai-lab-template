@@ -10,6 +10,7 @@ import { TaskCard } from '../../../components/checklists/TaskCard';
 import {
   IconChevronLeft, IconSparkle, IconRefresh, IconCheck, IconPlus, IconX,
 } from '../../../components/checklists/Icons';
+import { TelegramHelpModal } from '../../../components/ui/TelegramHelpModal';
 import { checklistsApi, totalDailyMinutes, WEEKDAYS, type ChecklistParams, type TaskDraft } from '../../../lib/checklists';
 
 const USER_ROLES = ['superadmin', 'admin', 'client'];
@@ -122,7 +123,7 @@ export default function NewChecklistPage() {
   }
 
   async function handleConfirm() {
-    if (tasks.find((t) => !t.description.trim())) { setError('Hay tareas sin descripción'); return; }
+    if (tasks.find((task) => !task.description.trim())) { setError(t.checklist.errorEmptyTask); return; }
     setSaving(true); setError('');
     try {
       const saved = await checklistsApi.confirm(params, tasks);
@@ -208,7 +209,7 @@ export default function NewChecklistPage() {
                 )}
 
                 <section className="card p-6 space-y-5">
-                  <SectionTitle num="01">Core</SectionTitle>
+                  <SectionTitle num="01"><span suppressHydrationWarning>{t.checklist.sectionCore}</span></SectionTitle>
                   <div>
                     <label className="label" suppressHydrationWarning>{t.checklist.titleLabel} *</label>
                     <input type="text" maxLength={100} className="input"
@@ -268,7 +269,7 @@ export default function NewChecklistPage() {
               {/* RIGHT column */}
               <div className="space-y-6">
                 <section className="card p-6 space-y-5">
-                  <SectionTitle num="03">Estilo</SectionTitle>
+                  <SectionTitle num="03"><span suppressHydrationWarning>{t.checklist.sectionStyle}</span></SectionTitle>
                   <div>
                     <label className="label" suppressHydrationWarning>{t.checklist.styleLabel} *</label>
                     <div className="grid grid-cols-3 gap-2">
@@ -297,7 +298,7 @@ export default function NewChecklistPage() {
                 </section>
 
                 <section className="card p-6 space-y-5">
-                  <SectionTitle num="04">Recordatorios</SectionTitle>
+                  <SectionTitle num="04"><span suppressHydrationWarning>{t.checklist.sectionReminders}</span></SectionTitle>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <div onClick={() => setReminderEnabled(!reminderEnabled)}
                       className={`w-10 h-5 rounded-full relative transition-colors duration-200
@@ -338,8 +339,20 @@ export default function NewChecklistPage() {
                         </div>
                       </div>
                       <div>
-                        <label className="label" suppressHydrationWarning>{t.checklist.telegramLabel}</label>
-                        <input type="text" className="input" placeholder={t.checklist.telegramPlaceholder}
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="label" suppressHydrationWarning>{t.checklist.telegramLabel}</label>
+                          <button type="button" onClick={() => setShowTelegramHelp(true)}
+                            className="font-mono text-[9px] text-sky-500 dark:text-sky-400
+                                       hover:text-sky-600 dark:hover:text-sky-300 transition-colors
+                                       flex items-center gap-1">
+                            <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.3"/>
+                              <path d="M7 6.5v3M7 4.5v.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                            </svg>
+                            ¿Cómo obtenerlo?
+                          </button>
+                        </div>
+                        <input type="text" className="input font-mono" placeholder={t.checklist.telegramPlaceholder}
                           value={params.telegramChatId ?? ''}
                           onChange={(e) => setParams({ ...params, telegramChatId: e.target.value })} />
                       </div>
@@ -523,6 +536,7 @@ export default function NewChecklistPage() {
         </div>
       )}
     </div>
+      {showTelegramHelp && <TelegramHelpModal onClose={() => setShowTelegramHelp(false)} />}
   );
 }
 

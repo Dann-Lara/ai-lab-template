@@ -447,6 +447,27 @@ export class ChecklistsService {
     return this.feedbackRepo.save(feedback);
   }
 
+  // ── Patch item by ID only (for Telegram/n8n without user context) ────────────
+  async patchItemByIdOnly(
+    itemId: string,
+    action: 'complete' | 'postpone' | 'skip',
+  ): Promise<void> {
+    const item = await this.itemRepo.findOneByOrFail({ id: itemId });
+
+    if (action === 'complete') {
+      item.status = 'completed';
+      item.completedAt = new Date();
+    } else if (action === 'postpone') {
+      const due = item.dueDate ? new Date(item.dueDate) : new Date();
+      due.setDate(due.getDate() + 1);
+      item.dueDate = due;
+      item.reminderSent = false;
+    } else if (action === 'skip') {
+      item.status = 'skipped';
+    }
+    await this.itemRepo.save(item);
+  }
+
   // ── Due reminders (for n8n) ────────────────────────────────────────────────
   async getDueReminders(): Promise<Array<{
     itemId: string; checklistTitle: string; description: string; hack: string;

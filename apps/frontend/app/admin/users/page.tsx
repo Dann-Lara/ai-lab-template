@@ -80,7 +80,7 @@ export default function AdminUsersPage() {
   async function handleCreate() {
     setCreateError('');
     if (!createForm.name || !createForm.email || !createForm.password) {
-      setCreateError('Todos los campos son requeridos');
+      setCreateError(t.checklist.errorRequiredFields);
       return;
     }
     setActionLoading('create');
@@ -92,14 +92,14 @@ export default function AdminUsersPage() {
       });
       if (!res.ok) {
         const d = await res.json() as { message?: string };
-        setCreateError(d.message ?? 'Error al crear usuario');
+        setCreateError(d.message ?? t.common.error);
         return;
       }
       setCreateSuccess(t.users.userCreated);
       setCreateForm({ name: '', email: '', password: '', role: 'client' });
       setTimeout(() => { setCreateModal(false); setCreateSuccess(''); }, 1500);
       await load();
-    } catch { setCreateError('Error de red'); }
+    } catch { setCreateError(t.common.error); }
     finally { setActionLoading(null); }
   }
 
@@ -172,9 +172,9 @@ export default function AdminUsersPage() {
           <select className="input w-full sm:w-44" value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}>
             <option value="all" suppressHydrationWarning>{t.users.allRoles}</option>
-            <option value="superadmin">Superadmin</option>
-            <option value="admin">Admin</option>
-            <option value="client">Client</option>
+            <option value="superadmin" suppressHydrationWarning>{t.users.superadmin}</option>
+            <option value="admin" suppressHydrationWarning>{t.users.admin}</option>
+            <option value="client" suppressHydrationWarning>{t.users.client}</option>
           </select>
         </div>
 
@@ -307,8 +307,8 @@ export default function AdminUsersPage() {
                     <label className="label" suppressHydrationWarning>{t.users.role}</label>
                     <select className="input" value={createForm.role}
                       onChange={(e) => setCreateForm({ ...createForm, role: e.target.value as User['role'] })}>
-                      <option value="client">Client</option>
-                      <option value="admin">Admin</option>
+                      <option value="client" suppressHydrationWarning>{t.users.client}</option>
+                      <option value="admin" suppressHydrationWarning>{t.users.admin}</option>
                     </select>
                   </div>
                 </div>

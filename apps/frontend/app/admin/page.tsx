@@ -11,13 +11,14 @@ import { checklistsApi, type Checklist } from '../../lib/checklists';
 
 const ADMIN_ROLES = ['superadmin', 'admin'];
 
-const SERVICES = [
-  { label: 'Frontend',   value: 'Next.js 14',    port: '3000' },
-  { label: 'Backend',    value: 'NestJS',        port: '3001' },
-  { label: 'Database',   value: 'PostgreSQL 16', port: '5432' },
-  { label: 'Cache',      value: 'Redis',         port: '6379' },
-  { label: 'Automation', value: 'n8n',           port: '5678' },
-  { label: 'API Docs',   value: 'Swagger',       port: '3001/api/docs' },
+type SvcKey = 'svcFrontend'|'svcBackend'|'svcDatabase'|'svcCache'|'svcAutomation'|'svcApiDocs';
+const SERVICES: { labelKey: SvcKey; value: string; port: string }[] = [
+  { labelKey: 'svcFrontend',   value: 'Next.js 14',    port: '3000' },
+  { labelKey: 'svcBackend',    value: 'NestJS',        port: '3001' },
+  { labelKey: 'svcDatabase',   value: 'PostgreSQL 16', port: '5432' },
+  { labelKey: 'svcCache',      value: 'Redis',         port: '6379' },
+  { labelKey: 'svcAutomation', value: 'n8n',           port: '5678' },
+  { labelKey: 'svcApiDocs',    value: 'Swagger',       port: '3001/api/docs' },
 ];
 
 function ChecklistProgressCard({ checklist }: { checklist: Checklist }) {
@@ -167,6 +168,28 @@ export default function AdminDashboard(): React.JSX.Element {
             </Link>
           )}
 
+          <Link href="/admin/profile"
+            className="card p-5 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200
+                       flex items-center gap-4 group">
+            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/60
+                            border border-slate-200 dark:border-slate-700
+                            flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                <circle cx="9" cy="7" r="3" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M3 16c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M13 3l1.5 1.5M14.5 3L13 4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <p className="font-mono text-[12px] font-semibold text-slate-800 dark:text-slate-200"
+                 suppressHydrationWarning>{t.dashboard.myProfile}</p>
+              <p className="font-mono text-[9px] text-slate-400 mt-0.5"
+                 suppressHydrationWarning>{t.dashboard.profileSub}</p>
+            </div>
+            <span className="ml-auto font-mono text-[10px] text-slate-300 dark:text-slate-700
+                             group-hover:text-slate-500 transition-colors">→</span>
+          </Link>
+
           <div className="card p-5 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-400/10
                             border border-emerald-200 dark:border-emerald-400/20
@@ -244,7 +267,7 @@ export default function AdminDashboard(): React.JSX.Element {
                          className="group-open:rotate-180 transition-transform">
                       <path d="M1.5 3l2.5 2.5L6.5 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                     </svg>
-                    ¿Cómo se usa?
+                    <span suppressHydrationWarning>{t.dashboard.howToUse}</span>
                   </summary>
                   <p className="font-mono text-[10px] text-slate-400 leading-relaxed mt-2 pl-3
                                 border-l-2 border-sky-200 dark:border-sky-400/20"
@@ -278,13 +301,13 @@ export default function AdminDashboard(): React.JSX.Element {
 
         {activeTab === 'system' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {SERVICES.map(({ label, value, port }) => (
-              <div key={label}
+            {SERVICES.map(({ labelKey, value, port }) => (
+              <div key={labelKey}
                 className="flex items-center justify-between p-4 rounded-xl border
                            border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40
                            hover:border-slate-300 dark:hover:border-slate-700 transition-all group">
                 <div>
-                  <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400">{label}</p>
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-slate-400" suppressHydrationWarning>{t.dashboard[labelKey]}</p>
                   <p className="font-mono text-sm text-slate-700 dark:text-slate-300 mt-0.5">{value}</p>
                 </div>
                 <a href={`http://localhost:${port}`} target="_blank" rel="noopener noreferrer"

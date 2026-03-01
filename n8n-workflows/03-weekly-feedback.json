@@ -1,0 +1,101 @@
+{
+  "name": "03 - Weekly AI Feedback (Sunday 20:00)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "weeks" }],
+          "weekdays": [0],
+          "triggerAtHour": 20,
+          "triggerAtMinute": 0
+        }
+      },
+      "id": "weekly-trigger",
+      "name": "Every Sunday 20:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": { "timeout": 15000 }
+      },
+      "id": "get-all-checklists",
+      "name": "Get Active Checklists",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "credentials": { "httpHeaderAuth": { "id": "1", "name": "Backend Webhook Secret" } },
+      "notes": "Uses a superadmin token. Configure httpHeaderAuth with Authorization: Bearer <superadmin_token>"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter only active checklists with a telegramChatId\nconst items = Array.isArray($input.item.json) ? $input.item.json : [];\nreturn items\n  .filter(c => c.status === 'active' && c.telegramChatId)\n  .map(c => ({ json: c }));"
+      },
+      "id": "filter-active",
+      "name": "Filter Active + Has Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists/{{ $json.id }}/feedback",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": { "timeout": 30000 }
+      },
+      "id": "generate-feedback",
+      "name": "Generate AI Feedback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "credentials": { "httpHeaderAuth": { "id": "1", "name": "Backend Webhook Secret" } }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Filter Active + Has Telegram').item.json.telegramChatId }}",
+        "text": "🤖 *Feedback semanal — {{ $('Filter Active + Has Telegram').item.json.title }}*\n\n{{ $json.feedbackText }}\n\n_Generado por AI Lab · Semana {{ $json.weekNumber }}_",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "send-feedback-telegram",
+      "name": "Send Feedback via Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1120, 300],
+      "credentials": { "telegramApi": { "id": "2", "name": "Telegram Bot" } }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/webhooks/n8n",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'weekly-feedback-complete', count: $('Filter Active + Has Telegram').all().length, timestamp: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "notify-backend",
+      "name": "Notify Backend (log)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "credentials": { "httpHeaderAuth": { "id": "1", "name": "Backend Webhook Secret" } }
+    }
+  ],
+  "connections": {
+    "Every Sunday 20:00": { "main": [[{ "node": "Get Active Checklists", "type": "main", "index": 0 }]] },
+    "Get Active Checklists": { "main": [[{ "node": "Filter Active + Has Telegram", "type": "main", "index": 0 }]] },
+    "Filter Active + Has Telegram": { "main": [[{ "node": "Generate AI Feedback", "type": "main", "index": 0 }]] },
+    "Generate AI Feedback": { "main": [[{ "node": "Send Feedback via Telegram", "type": "main", "index": 0 }]] },
+    "Send Feedback via Telegram": { "main": [[{ "node": "Notify Backend (log)", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "saveManualExecutions": true, "errorWorkflow": "" },
+  "tags": ["checklist", "feedback", "weekly", "telegram"],
+  "meta": { "description": "Every Sunday at 20:00 generates AI feedback for each active checklist and sends it via Telegram. Requires: Telegram Bot + Backend Webhook Secret with a superadmin Bearer token." }
+}

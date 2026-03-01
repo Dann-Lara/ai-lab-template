@@ -50,6 +50,7 @@ services:
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
+      - N8N_WEBHOOK_BASE_URL=${BACKEND_PUBLIC_URL:-http://localhost:3001}
       - WEBHOOK_URL=http://localhost:5678/
       - GENERIC_TIMEZONE=America/Mexico_City
       - N8N_LOG_LEVEL=info
@@ -78,6 +79,9 @@ services:
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
       - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET:-webhook-secret}
       - N8N_BASE_URL=http://n8n:5678
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
+      - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:3001}
     depends_on:
       postgres:
         condition: service_healthy
@@ -101,6 +105,7 @@ services:
       - BACKEND_URL=http://backend:3001
       - NEXT_PUBLIC_APP_NAME=AI Lab
       - NEXT_PUBLIC_API_URL=http://localhost:3000/api
+      - NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
     depends_on:
       - backend
     volumes:

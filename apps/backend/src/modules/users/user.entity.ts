@@ -28,6 +28,9 @@ export class UserEntity {
   @Column({ default: true })
   isActive!: boolean;
 
+  @Column({ nullable: true, type: 'varchar' })
+  telegramChatId?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

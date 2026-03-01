@@ -1,0 +1,133 @@
+{
+  "name": "01 - Checklist Reminders (Daily)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "minutesInterval": 60 }] }
+      },
+      "id": "schedule-trigger",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists/reminders/due",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": { "timeout": 15000 }
+      },
+      "id": "fetch-due-reminders",
+      "name": "Fetch Due Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "credentials": { "httpHeaderAuth": { "id": "1", "name": "Backend Webhook Secret" } }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            {
+              "id": "has-items",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ]
+        }
+      },
+      "id": "has-reminders",
+      "name": "Has Reminders?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "=items",
+        "options": {}
+      },
+      "id": "split-reminders",
+      "name": "Split Into Items",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [900, 220]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "has-telegram",
+              "leftValue": "={{ $json.telegramChatId }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "isNotEmpty" }
+            }
+          ]
+        }
+      },
+      "id": "has-telegram-id",
+      "name": "Has Telegram ID?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 220]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.telegramChatId }}",
+        "text": "📋 *{{ $json.checklistTitle }}*\n\n⏰ *Tarea pendiente:*\n{{ $json.description }}\n\n💡 *Tip:* {{ $json.hack }}",
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "reply_markup": {
+            "inline_keyboard": [
+              [
+                { "text": "✅ Completada", "callback_data": "complete:{{ $json.itemId }}" },
+                { "text": "⏳ Aplazar 1 día", "callback_data": "postpone:{{ $json.itemId }}" }
+              ]
+            ]
+          }
+        }
+      },
+      "id": "send-telegram-reminder",
+      "name": "Send Telegram Reminder",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1340, 160],
+      "credentials": { "telegramApi": { "id": "2", "name": "Telegram Bot" } }
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists/{{ $('Split Into Items').item.json.checklistId }}/items/{{ $('Split Into Items').item.json.itemId }}",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [{ "name": "action", "value": "mark-reminded" }]
+        },
+        "options": { "timeout": 10000 }
+      },
+      "id": "mark-reminder-sent",
+      "name": "Mark Reminder Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 160],
+      "credentials": { "httpHeaderAuth": { "id": "1", "name": "Backend Webhook Secret" } }
+    }
+  ],
+  "connections": {
+    "Every Hour": { "main": [[{ "node": "Fetch Due Reminders", "type": "main", "index": 0 }]] },
+    "Fetch Due Reminders": { "main": [[{ "node": "Has Reminders?", "type": "main", "index": 0 }]] },
+    "Has Reminders?": { "main": [[{ "node": "Split Into Items", "type": "main", "index": 0 }], []] },
+    "Split Into Items": { "main": [[{ "node": "Has Telegram ID?", "type": "main", "index": 0 }]] },
+    "Has Telegram ID?": { "main": [[{ "node": "Send Telegram Reminder", "type": "main", "index": 0 }], []] },
+    "Send Telegram Reminder": { "main": [[{ "node": "Mark Reminder Sent", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1", "saveManualExecutions": true, "callerPolicy": "workflowsFromSameOwner" },
+  "staticData": null,
+  "tags": ["checklist", "reminders", "telegram"],
+  "meta": { "description": "Sends Telegram reminders for due checklist tasks every hour. Requires: Backend Webhook Secret (httpHeaderAuth) + Telegram Bot credentials." }
+}

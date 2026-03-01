@@ -64,6 +64,18 @@ export class UsersService {
     });
   }
 
+  async updateProfile(id: string, dto: { name?: string; telegramChatId?: string }): Promise<UserEntity> {
+    await this.userRepo.update(id, dto);
+    return this.findOne(id);
+  }
+
+  async findAllWithTelegram(): Promise<UserEntity[]> {
+    return this.userRepo.find({
+      where: { role: 'superadmin' },
+      select: ['id', 'email', 'name', 'role', 'telegramChatId'],
+    });
+  }
+
   async setActive(id: string, isActive: boolean): Promise<UserEntity> {
     const user = await this.findOne(id);
     await this.userRepo.update(id, { isActive });

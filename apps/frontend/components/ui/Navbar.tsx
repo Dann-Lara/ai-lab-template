@@ -109,6 +109,13 @@ export function Navbar({ variant = 'public' }: { variant?: 'public' | 'admin' | 
                   </li>
                 )}
                 <li>
+                  <Link href="/admin/profile"
+                    className="text-[10px] font-mono uppercase tracking-[0.25em]
+                               text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-sky-400 transition-colors">
+                    Perfil
+                  </Link>
+                </li>
+                <li>
                   <Link href="/checklists"
                     className="text-[10px] font-mono uppercase tracking-[0.25em]
                                text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
