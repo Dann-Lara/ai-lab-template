@@ -32,7 +32,7 @@ const PROVIDERS: ProviderConfig[] = [
     name: 'gemini',
     priority: 1,
     envKey: 'GEMINI_API_KEY',
-    defaultModel: 'gemini-1.5-flash',
+    defaultModel: 'gemini-2.5-flash-preview-04-17',
     modelEnvKey: 'GEMINI_DEFAULT_MODEL',
     available: () => !!process.env['GEMINI_API_KEY'],
   },
