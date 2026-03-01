@@ -32,7 +32,7 @@ const PROVIDERS: ProviderConfig[] = [
     name: 'gemini',
     priority: 1,
     envKey: 'GEMINI_API_KEY',
-    defaultModel: 'gemini-2.5-flash-preview-04-17',
+    defaultModel: 'gemini-2.0-flash',
     modelEnvKey: 'GEMINI_DEFAULT_MODEL',
     available: () => !!process.env['GEMINI_API_KEY'],
   },
@@ -123,8 +123,10 @@ export function isExhaustedError(error: unknown): boolean {
     msg.includes('resource_exhausted') ||
     msg.includes('api key') ||
     msg.includes('apikey') ||
-    // Gemini-specific
-    msg.includes('user_location_not_supported') ||
+    // Model not found / wrong model string — treat as provider config error, try next
+    msg.includes('404') ||
+    msg.includes('not found for api version') ||
+    msg.includes('is not supported for generatecontent') ||
     msg.includes('model not found') ||
     // Provider down
     msg.includes('503') ||

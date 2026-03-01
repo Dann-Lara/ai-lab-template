@@ -17,8 +17,36 @@
 git clone <repo>
 cd ai-lab-template
 npm run setup          # installs deps, starts Docker, seeds superadmin
-# Edit apps/backend/.env → set OPENAI_API_KEY
+# Edit apps/backend/.env → set at least one AI provider key (see AI Providers)
 npm run dev            # starts frontend (3000) + backend (3001)
+```
+
+---
+
+## AI Providers
+
+The monorepo supports multiple AI providers with **automatic fallback**. If a provider fails (quota exceeded, bad key, rate limit), the next one is tried automatically.
+
+Set one or more keys in `apps/backend/.env`:
+
+| Provider   | Env Var              | Default Model             | Free Tier |
+|------------|----------------------|---------------------------|-----------|
+| Google Gemini | `GEMINI_API_KEY`  | `gemini-2.0-flash`        | Yes       |
+| Groq       | `GROQ_API_KEY`       | `llama-3.1-70b-versatile` | Yes       |
+| OpenAI     | `OPENAI_API_KEY`     | `gpt-4o-mini`             | No        |
+| DeepSeek   | `DEEPSEEK_API_KEY`   | `deepseek-chat`           | Cheap     |
+| Anthropic  | `ANTHROPIC_API_KEY`  | `claude-3-haiku`          | No        |
+
+**Priority order** (default): Gemini → Groq → OpenAI → DeepSeek → Anthropic
+
+Override priority without changing code:
+```env
+AI_PROVIDER_PRIORITY=openai,gemini,groq
+```
+
+Check active providers at runtime:
+```
+GET /v1/ai/providers
 ```
 
 ---
@@ -29,7 +57,7 @@ npm run dev            # starts frontend (3000) + backend (3001)
 |-------------|-----------------|-------------|-------------------------------|
 | `superadmin` | Auto on startup | `/admin`    | All — creates admin/client    |
 | `admin`      | By superadmin   | `/admin`    | Create/manage clients         |
-| `client`     | Self (signup)   | `/client`   | AI tools only                 |
+| `client`     | Self (signup)   | `/client`   | AI tools + Checklists         |
 
 **Default superadmin** (dev):
 ```
@@ -40,8 +68,26 @@ password: SuperAdmin123!
 
 ---
 
-## Auth Endpoints
+## Features
 
+### Intelligent Checklist (`/checklists`)
+AI-generated personalized task lists with:
+- 5-step creation flow: questionnaire → AI generation → drag-and-drop editor → confirm → done
+- Regeneration with user feedback
+- Task completion, postpone, skip — from web and Telegram
+- Progress dashboard: completion ring, 14-day activity chart
+- Weekly AI feedback (motivational coaching)
+- Telegram reminders via n8n webhooks
+
+### AI Tools (`/admin`, `/client`)
+- Text generation (configurable prompt + system message + temperature)
+- Text summarization (language-aware)
+
+---
+
+## API Endpoints
+
+### Auth
 | Method | Path                | Auth        | Description                      |
 |--------|---------------------|-------------|----------------------------------|
 | POST   | `/v1/auth/signup`   | Public      | Create client account            |
@@ -49,6 +95,28 @@ password: SuperAdmin123!
 | POST   | `/v1/auth/refresh`  | —           | Refresh access token             |
 | GET    | `/v1/auth/me`       | JWT         | Current user info                |
 | POST   | `/v1/auth/users`    | admin+      | Create admin/client user         |
+
+### AI
+| Method | Path                  | Auth | Description                   |
+|--------|-----------------------|------|-------------------------------|
+| POST   | `/v1/ai/generate`     | JWT  | Generate text                 |
+| POST   | `/v1/ai/summarize`    | JWT  | Summarize text                |
+| GET    | `/v1/ai/providers`    | JWT  | List active providers         |
+
+### Checklists
+| Method | Path                               | Auth | Description                        |
+|--------|------------------------------------|------|------------------------------------|
+| POST   | `/v1/checklists/generate-draft`    | JWT  | AI-generate draft tasks            |
+| POST   | `/v1/checklists/regenerate-draft`  | JWT  | Regenerate with user feedback      |
+| POST   | `/v1/checklists/confirm`           | JWT  | Save confirmed checklist           |
+| GET    | `/v1/checklists`                   | JWT  | List user checklists               |
+| GET    | `/v1/checklists/:id`               | JWT  | Get checklist with items           |
+| PATCH  | `/v1/checklists/:id`               | JWT  | Update status / title              |
+| DELETE | `/v1/checklists/:id`               | JWT  | Delete checklist                   |
+| PATCH  | `/v1/checklists/:id/items/:itemId` | JWT  | Complete / postpone / skip task    |
+| GET    | `/v1/checklists/:id/progress`      | JWT  | Progress data for dashboard        |
+| POST   | `/v1/checklists/:id/feedback`      | JWT  | Generate AI weekly feedback        |
+| GET    | `/v1/checklists/reminders/due`     | —    | Due tasks for n8n automation       |
 
 ---
 
@@ -58,19 +126,62 @@ password: SuperAdmin123!
 |------------|----------------------------------|
 | Frontend   | http://localhost:3000            |
 | Backend    | http://localhost:3001            |
-| Swagger    | http://localhost:3001/api/docs   |
+| Swagger    | http://localhost:3001/api        |
 | n8n        | http://localhost:5678            |
 | PostgreSQL | localhost:5432                   |
 | Redis      | localhost:6379                   |
 
 ---
 
-## Stack
+## Structure
 
-- **Frontend**: Next.js 14, App Router, Tailwind CSS, Bebas Neue + Space Mono typography
-- **Backend**: NestJS 10, TypeORM, Passport JWT, class-validator
-- **AI**: LangChain, GPT-4o-mini
-- **DB**: PostgreSQL 16 + Redis
-- **Automation**: n8n with bidirectional webhooks
-- **Monorepo**: Turborepo + shared packages (`@ai-lab/shared`, `@ai-lab/ai-core`)
-- **CI/CD**: GitHub Actions + Docker Compose
+```
+ai-lab-template/
+├── apps/
+│   ├── frontend/          Next.js 14 — pages, components, i18n, theme
+│   │   ├── app/
+│   │   │   ├── checklists/         Checklist feature pages
+│   │   │   ├── admin/              Admin panel
+│   │   │   └── client/             Client panel
+│   │   └── components/
+│   │       └── checklists/         TaskCard, StepIndicator, ProgressRing, Icons
+│   └── backend/           NestJS — API, auth, AI, checklists, webhooks
+│       └── src/modules/
+│           ├── checklists/         Full checklist CRUD + AI generation
+│           ├── ai/                 LLM proxy + provider status
+│           ├── auth/               JWT + roles
+│           └── webhooks/           n8n integration
+└── packages/
+    ├── ai-core/           Multi-provider LLM engine with fallback
+    │   └── src/
+    │       ├── providers/registry.ts   Provider config + exhaustion detection
+    │       ├── llm/factory.ts          LLM instantiation per provider
+    │       ├── llm/executor.ts         Fallback chain executor
+    │       └── chains/                 generateText, summarizeText
+    └── shared/            Shared types and DTOs
+```
+
+---
+
+## Database
+
+Tables managed by TypeORM (auto-sync in dev):
+
+| Table                | Description                            |
+|----------------------|----------------------------------------|
+| `users`              | Auth + roles                           |
+| `checklists`         | Checklist metadata + config            |
+| `checklist_items`    | Individual tasks with frequency/status |
+| `checklist_feedbacks`| AI-generated weekly feedback           |
+
+---
+
+## Environment Variables
+
+See `apps/backend/.env.example` for the full reference. Minimum required:
+
+```env
+DATABASE_URL=postgresql://admin:secret@localhost:5432/ailab
+JWT_SECRET=your-secret-key
+GEMINI_API_KEY=your-gemini-key   # or any other provider key
+```

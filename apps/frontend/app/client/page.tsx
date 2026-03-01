@@ -60,7 +60,7 @@ export default function ClientDashboard(): React.JSX.Element {
         <div className="mb-6 p-4 rounded-xl border border-sky-200 dark:border-sky-400/20
                         bg-sky-50 dark:bg-sky-400/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-xl">✅</span>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="shrink-0 text-sky-500"><path d="M3 9l4.5 4.5 7.5-7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             <div>
               <p className="font-mono text-[11px] font-semibold text-sky-700 dark:text-sky-300">Checklists Inteligentes</p>
               <p className="font-mono text-[10px] text-slate-500">Crea y gestiona checklists con IA</p>

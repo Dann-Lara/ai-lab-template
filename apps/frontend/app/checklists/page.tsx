@@ -172,7 +172,8 @@ export default function ChecklistsListPage() {
           </div>
           <Link href="/checklists/new" className="btn-primary flex items-center gap-2 py-3 px-6 self-start"
                 suppressHydrationWarning>
-            ✨ {t.checklist.newChecklist}
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="shrink-0"><path d="M7 1.5L8 5.5l4 1-4 1-1 4-1-4-4-1 4-1 1-4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+            {t.checklist.newChecklist}
           </Link>
         </div>
 
@@ -209,7 +210,7 @@ export default function ChecklistsListPage() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 gap-6">
             <div className="w-20 h-20 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800
-                            flex items-center justify-center text-3xl text-slate-300 dark:text-slate-700">
+                            flex items-center justify-center text-2xl text-slate-300 dark:text-slate-700 font-mono">
               ✓
             </div>
             <div className="text-center">
@@ -220,7 +221,8 @@ export default function ChecklistsListPage() {
                 {t.checklist.createFirst}
               </p>
               <Link href="/checklists/new" className="btn-primary" suppressHydrationWarning>
-                ✨ {t.checklist.newChecklist}
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="none" className="shrink-0"><path d="M7 1.5L8 5.5l4 1-4 1-1 4-1-4-4-1 4-1 1-4z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/></svg>
+            {t.checklist.newChecklist}
               </Link>
             </div>
           </div>

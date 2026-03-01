@@ -162,13 +162,12 @@ export default function ChecklistDetailPage() {
             <div className="flex items-center gap-2 flex-wrap shrink-0">
               <button onClick={handleStatusToggle}
                 className="btn-ghost text-[10px] py-1.5 px-3" suppressHydrationWarning>
-                {checklist.status === 'active' ? `⏸ ${t.checklist.pauseChecklist}` : `▶ ${t.checklist.resumeChecklist}`}
+                {checklist.status === 'active' ? `${t.checklist.pauseChecklist}` : `${t.checklist.resumeChecklist}`}
               </button>
               <button onClick={() => setDeleteModal(true)}
                 className="btn-ghost text-[10px] py-1.5 px-3 hover:border-red-300 dark:hover:border-red-400/30
                            hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                🗑
-              </button>
+                </button>
             </div>
           </div>
         </div>
@@ -191,7 +190,7 @@ export default function ChecklistDetailPage() {
                             ? 'border-sky-500 text-sky-600 dark:text-sky-400'
                             : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                           }`}>
-              {tab === 'tasks' ? `✓ Tareas (${pendingTasks.length})` : '📊 Dashboard'}
+              {tab === 'tasks' ? `✓ Tareas (${pendingTasks.length})` : 'Dashboard'}
             </button>
           ))}
         </div>
@@ -301,12 +300,12 @@ export default function ChecklistDetailPage() {
               <div className="flex items-center justify-between mb-4">
                 <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-slate-400"
                    suppressHydrationWarning>
-                  🧠 {t.checklist.aiFeedback}
+                  {t.checklist.aiFeedback}
                 </p>
                 <button onClick={() => void handleFeedback()} disabled={feedbackLoading}
                   className="btn-ghost text-[10px] py-1.5 px-3 flex items-center gap-1.5"
                   suppressHydrationWarning>
-                  {feedbackLoading ? <Spinner /> : `✨ ${t.checklist.generateFeedback}`}
+                  {feedbackLoading ? <Spinner /> : `${t.checklist.generateFeedback}`}
                 </button>
               </div>
               {latestFeedback ? (
