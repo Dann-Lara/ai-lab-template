@@ -8,7 +8,7 @@ export interface Messages {
   nav: {
     home: string; dashboard: string; features: string; stack: string; docs: string;
     login: string; signup: string; logout: string;
-    adminPanel: string; clientPanel: string; users: string;
+    adminPanel: string; clientPanel: string; users: string; checklist: string;
   };
   home: {
     heroTag: string; heroTitle: string; heroSub: string; heroCta: string; heroCtaSec: string;
@@ -82,6 +82,9 @@ export interface Messages {
     estimatedMin: string; mins: string;
     saveSuccess: string; deleteSuccess: string;
     navChecklist: string;
+    tabTasks: string; tabDashboard: string; tabGlobal: string;
+    pendingSection: string; completedSection: string;
+    globalDashboard: string; aiToolsTitle: string; aiToolsDesc: string;
   };
 }
 
@@ -111,7 +114,29 @@ const translations: Record<Locale, Messages> = {
       passwordHint: 'Mínimo 8 caracteres, una mayúscula, una minúscula y un número.',
       successSignup: '¡Cuenta creada! Ahora puedes ingresar.',
     },
-    dashboard: { title: 'Panel', adminTitle: 'Panel de Administración', clientTitle: 'Panel de Cliente', generatorTitle: 'Generador de Texto', summarizerTitle: 'Resumidor de Texto', welcomeBack: 'Bienvenido de vuelta' },
+    dashboard: {
+      title: 'Panel', adminTitle: 'Panel de Administración', clientTitle: 'Panel de Cliente',
+      generatorTitle: 'Generador de Texto IA',
+      generatorDesc: 'Genera cualquier tipo de contenido: emails, documentos, código, ideas y más.',
+      generatorUsage: 'Escribe tu instrucción, ajusta temperatura y modelo, presiona Generar. Copia el resultado.',
+      summarizerTitle: 'Resumidor de Texto IA',
+      summarizerDesc: 'Reduce textos largos a su esencia. Ideal para artículos y documentos extensos.',
+      welcomeBack: 'Bienvenido de vuelta',
+      aiTools: 'Herramientas IA', systemInfo: 'Infraestructura',
+      checklistProgress: 'Progreso de Checklists', viewAll: 'Ver todos',
+      noChecklistsYet: 'Sin checklists aún', startChecklist: 'Crear checklist',
+      overallProgress: 'Progreso global',
+    },
+    users: {
+      title: 'Usuarios', createUser: 'Crear usuario', email: 'Email', name: 'Nombre',
+      role: 'Rol', status: 'Estado', active: 'Activo', inactive: 'Inactivo',
+      actions: 'Acciones', editUser: 'Editar', deactivate: 'Desactivar', activate: 'Activar',
+      superadmin: 'Superadmin', admin: 'Admin', client: 'Cliente',
+      createdAt: 'Creado', confirmDeactivate: '¿Desactivar este usuario?',
+      userCreated: 'Usuario creado exitosamente',
+      password: 'Contraseña', cancel: 'Cancelar', create: 'Crear', search: 'Buscar usuarios...',
+      allRoles: 'Todos los roles', filterRole: 'Filtrar por rol', noUsers: 'Sin usuarios',
+    },
     admin: { usersTitle: 'Usuarios', createUser: 'Crear Usuario', userCount: 'Total usuarios', activeUsers: 'Activos', role: 'Rol', status: 'Estado', actions: 'Acciones', deactivate: 'Desactivar', activate: 'Activar' },
     ai: { systemMessage: 'Mensaje de sistema (opcional)', systemMessagePlaceholder: 'Eres un asistente útil...', prompt: 'Prompt', promptPlaceholder: 'Escribe tu prompt aquí...', temperature: 'Temperatura', generate: 'Generar', generating: 'Generando...', result: 'Resultado', textToSummarize: 'Texto a resumir', textToSummarizePlaceholder: 'Pega el texto que deseas resumir...', summarize: 'Resumir', summarizing: 'Resumiendo...', summary: 'Resumen' },
     footer: { description: 'Monorepo fullstack con IA, auth robusto y automatización. Listo para producción.', navTitle: 'Navegación', stackTitle: 'Stack', statusTitle: 'Estado', statusMsg: 'Sistema operativo', location: 'Dev · Local', rights: 'Todos los derechos reservados', madeWith: 'Construido con' },
