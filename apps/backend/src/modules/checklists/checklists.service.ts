@@ -62,14 +62,62 @@ function validateAiResponse(raw: unknown): AiDraft {
   return obj as unknown as AiDraft;
 }
 
-// ── Parse AI JSON with markdown fences removed ───────────────────────────────
-function parseAiJson(text: string): AiDraft {
-  const cleaned = text.replace(/```json|```/g, '').trim();
-  // Find the first { ... } block
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('No JSON object found');
-  return validateAiResponse(JSON.parse(cleaned.slice(start, end + 1)) as unknown);
+// ── Parse AI JSON — robust parser handles Gemini/LLM quirks ─────────────────
+function parseAiJson(
+  text: string,
+  logger?: { warn: (m: string) => void; debug: (m: string) => void },
+): AiDraft {
+  // Log raw AI response for debugging
+  const preview = text.length > 600
+    ? `${text.slice(0, 600)}...[+${text.length - 600} chars]`
+    : text;
+  if (logger) {
+    logger.debug(`AI raw response (${text.length} chars):\n${preview}`);
+  } else {
+    console.log(`[AI-Debug] Raw response (${text.length} chars):\n${preview}`);
+  }
+
+  // Strip markdown fences: ```json...``` or ```...```
+  const cleaned = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
+
+  const objStart = cleaned.indexOf('{');
+  const arrStart = cleaned.indexOf('[');
+
+  if (objStart === -1 && arrStart === -1) {
+    const msg = `No JSON structure in AI response. Full text: ${text}`;
+    if (logger) logger.warn(msg); else console.warn('[AI-Debug]', msg);
+    throw new Error('No JSON object found in AI response');
+  }
+
+  let jsonStr: string;
+
+  // If object comes before array (or no array), use object directly
+  if (objStart !== -1 && (arrStart === -1 || objStart < arrStart)) {
+    const end = cleaned.lastIndexOf('}');
+    if (end === -1) throw new Error('Malformed JSON: missing closing }');
+    jsonStr = cleaned.slice(objStart, end + 1);
+  } else {
+    // AI returned a bare array — wrap it into the expected shape
+    const warnMsg = 'AI returned bare array — wrapping as {"items":[...]}';
+    if (logger) logger.warn(warnMsg); else console.warn('[AI-Debug]', warnMsg);
+    const end = cleaned.lastIndexOf(']');
+    if (end === -1) throw new Error('Malformed JSON: missing closing ]');
+    jsonStr = `{"items":${cleaned.slice(arrStart, end + 1)}}`;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (e) {
+    const msg = `JSON.parse failed on: ${jsonStr.slice(0, 400)}`;
+    if (logger) logger.warn(msg); else console.warn('[AI-Debug]', msg);
+    throw new Error(`JSON parse error: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  return validateAiResponse(parsed);
 }
 
 // ── Retry helper with exponential backoff ────────────────────────────────────
@@ -110,7 +158,9 @@ Generate 5-15 tasks. Each task MUST have:
 Total estimated daily duration must not exceed ${p.dailyTimeAvailable} minutes.
 Optionally include "rationale" string (max 200 chars).
 
-Respond ONLY with valid JSON: {"items":[...],"rationale":"..."}. No extra text.`;
+CRITICAL: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after.
+The response must start with { and end with }. Example format:
+{"items":[{"description":"...","frequency":"daily","estimatedDuration":15,"hack":"..."}],"rationale":"..."}` ;
 }
 
 function buildRegenerationPrompt(p: CreateChecklistParamsDto, feedback: string): string {
@@ -166,7 +216,7 @@ export class ChecklistsService {
 
     const draft = await withRetry(async () => {
       const { text } = await generateText({ prompt, maxTokens: 2000, temperature: 0.7 });
-      return parseAiJson(text);
+      return parseAiJson(text, { warn: (m) => this.logger.warn(m), debug: (m) => this.logger.debug(m) });
     }, 2, 2000);
 
     const items: ChecklistItemDraftDto[] = draft.items.map((item, idx) => ({
@@ -191,7 +241,7 @@ export class ChecklistsService {
 
     const draft = await withRetry(async () => {
       const { text } = await generateText({ prompt, maxTokens: 2000, temperature: 0.75 });
-      return parseAiJson(text);
+      return parseAiJson(text, { warn: (m) => this.logger.warn(m), debug: (m) => this.logger.debug(m) });
     }, 2, 2000);
 
     const items: ChecklistItemDraftDto[] = draft.items.map((item, idx) => ({

@@ -77,6 +77,9 @@ export async function executeWithFallback(options: ExecuteOptions): Promise<Exec
       const text = await chain.invoke({ input: prompt });
 
       log('info', `Success: ${providerConfig.name} (${providerModel})`);
+      // Debug: log a preview of what the model returned (helps diagnose JSON parse issues)
+      const preview = text.length > 300 ? `${text.slice(0, 300)}...[+${text.length - 300}]` : text;
+      log('info', `Response preview: ${preview}`);
       return { text, provider: providerConfig.name, model: providerModel };
 
     } catch (err) {
