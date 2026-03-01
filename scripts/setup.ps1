@@ -162,6 +162,17 @@ if ($dockerAvailable) {
     docker compose up -d n8n 2>&1
     Write-Success "n8n started at http://localhost:5678 (admin / admin123)"
 
+    # Sync n8n workflows
+    Write-Step "Syncing n8n workflows..."
+    $syncResult = & node scripts/sync-n8n-workflows.js 2>&1
+    Write-Host $syncResult
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "n8n workflows synced"
+    } else {
+        Write-Warn "Workflow sync failed - run manually: npm run n8n:sync"
+        Write-Warn "Make sure N8N_API_KEY is set in apps/backend/.env or .env"
+    }
+
 } else {
     Write-Host ""
     Write-Host "  Skipping Docker steps. Once Docker Desktop is running, execute:" -ForegroundColor Yellow

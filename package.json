@@ -21,7 +21,9 @@
     "docker:logs": "docker compose logs -f",
     "db:migrate": "turbo run db:migrate --filter=backend",
     "db:seed": "turbo run db:seed --filter=backend",
-    "prepare": "husky"
+    "prepare": "husky",
+    "n8n:sync": "node scripts/sync-n8n-workflows.js",
+    "setup:full": "npm run setup && npm run n8n:sync"
   },
   "devDependencies": {
     "turbo": "^2.1.0",

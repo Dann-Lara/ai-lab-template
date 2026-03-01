@@ -80,7 +80,16 @@ echo -e "\n${YELLOW}>> Starting n8n...${NC}"
 docker compose up -d n8n 2>/dev/null || docker-compose up -d n8n
 echo -e "${GREEN}  [OK] n8n at http://localhost:5678 (admin / admin123)${NC}"
 
-#  8. DONE 
+#  8. SYNC N8N WORKFLOWS 
+echo -e "\n${YELLOW}>> Syncing n8n workflows...${NC}"
+if node scripts/sync-n8n-workflows.js; then
+  echo -e "${GREEN}  [OK] Workflows synced${NC}"
+else
+  echo -e "${YELLOW}  [!!] Workflow sync failed — run manually: npm run n8n:sync${NC}"
+  echo -e "${YELLOW}       Make sure N8N_API_KEY is set in apps/backend/.env or .env${NC}"
+fi
+
+#  9. DONE 
 echo -e "\n${GREEN}"
 echo "============================================"
 echo "     Setup Complete!"
@@ -92,4 +101,9 @@ echo -e "  Frontend : ${BLUE}http://localhost:3000${NC}"
 echo -e "  Backend  : ${BLUE}http://localhost:3001${NC}"
 echo -e "  Swagger  : ${BLUE}http://localhost:3001/api/docs${NC}"
 echo -e "  n8n      : ${BLUE}http://localhost:5678${NC}  (admin / admin123)"
+echo ""
+echo -e "  To re-sync n8n workflows: ${BLUE}npm run n8n:sync${NC}"
+echo -e "  To add credentials: open n8n UI → Credentials → New"
+echo ""
+echo -e "  ${YELLOW}ACTION REQUIRED: add your API keys to apps/backend/.env${NC}"
 echo ""
