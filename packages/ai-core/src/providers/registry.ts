@@ -40,7 +40,7 @@ const PROVIDERS: ProviderConfig[] = [
     name: 'groq',
     priority: 2,
     envKey: 'GROQ_API_KEY',
-    defaultModel: 'llama-3.1-70b-versatile',
+    defaultModel: 'llama-3.3-70b-versatile',
     modelEnvKey: 'GROQ_DEFAULT_MODEL',
     available: () => !!process.env['GROQ_API_KEY'],
   },
@@ -123,6 +123,11 @@ export function isExhaustedError(error: unknown): boolean {
     msg.includes('resource_exhausted') ||
     msg.includes('api key') ||
     msg.includes('apikey') ||
+    // Billing / balance issues — treat as exhausted, try next provider
+    msg.includes('402') ||
+    msg.includes('insufficient balance') ||
+    msg.includes('insufficient_balance') ||
+    msg.includes('payment required') ||
     // Model not found / wrong model string — treat as provider config error, try next
     msg.includes('404') ||
     msg.includes('not found for api version') ||
