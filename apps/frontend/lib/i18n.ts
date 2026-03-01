@@ -23,7 +23,24 @@ export interface Messages {
     noAccount: string; haveAccount: string; forgotPassword: string;
     passwordHint: string; successSignup: string;
   };
-  dashboard: { title: string; adminTitle: string; clientTitle: string; generatorTitle: string; summarizerTitle: string; welcomeBack: string; };
+  dashboard: {
+    title: string; adminTitle: string; clientTitle: string;
+    generatorTitle: string; generatorDesc: string; generatorUsage: string;
+    summarizerTitle: string; summarizerDesc: string;
+    welcomeBack: string;
+    aiTools: string; systemInfo: string;
+    checklistProgress: string; viewAll: string; noChecklistsYet: string;
+    startChecklist: string; overallProgress: string;
+  };
+  users: {
+    title: string; createUser: string; email: string; name: string;
+    role: string; status: string; active: string; inactive: string;
+    actions: string; editUser: string; deactivate: string; activate: string;
+    superadmin: string; admin: string; client: string;
+    createdAt: string; confirmDeactivate: string; userCreated: string;
+    password: string; cancel: string; create: string; search: string;
+    allRoles: string; filterRole: string; noUsers: string;
+  };
   admin: { usersTitle: string; createUser: string; userCount: string; activeUsers: string; role: string; status: string; actions: string; deactivate: string; activate: string; };
   ai: { systemMessage: string; systemMessagePlaceholder: string; prompt: string; promptPlaceholder: string; temperature: string; generate: string; generating: string; result: string; textToSummarize: string; textToSummarizePlaceholder: string; summarize: string; summarizing: string; summary: string; };
   footer: { description: string; navTitle: string; stackTitle: string; statusTitle: string; statusMsg: string; location: string; rights: string; madeWith: string; };
@@ -136,6 +153,11 @@ const translations: Record<Locale, Messages> = {
       estimatedMin: 'min estimados', mins: 'min',
       saveSuccess: '¡Checklist guardado!', deleteSuccess: 'Checklist eliminado',
       navChecklist: 'Checklists',
+      tabTasks: 'Tareas', tabDashboard: 'Dashboard', tabGlobal: 'Global',
+      pendingSection: 'Pendientes', completedSection: 'Completadas',
+      globalDashboard: 'Dashboard Global',
+      aiToolsTitle: 'Herramientas IA',
+      aiToolsDesc: 'Genera y resume texto con inteligencia artificial',
     },
   },
   en: {
@@ -163,7 +185,29 @@ const translations: Record<Locale, Messages> = {
       passwordHint: 'Min. 8 characters, one uppercase, one lowercase and one number.',
       successSignup: 'Account created! You can now sign in.',
     },
-    dashboard: { title: 'Dashboard', adminTitle: 'Admin Dashboard', clientTitle: 'Client Dashboard', generatorTitle: 'Text Generator', summarizerTitle: 'Text Summarizer', welcomeBack: 'Welcome back' },
+    dashboard: {
+      title: 'Dashboard', adminTitle: 'Admin Dashboard', clientTitle: 'Client Dashboard',
+      generatorTitle: 'AI Text Generator',
+      generatorDesc: 'Generate any type of content with AI: emails, documents, descriptions, code, ideas and more.',
+      generatorUsage: 'Write your instruction in the text field, adjust temperature (creativity) and model, then press Generate. The result appears below and you can copy it directly.',
+      summarizerTitle: 'AI Text Summarizer',
+      summarizerDesc: 'Condense long texts to their essence. Ideal for articles, documents or any extensive content.',
+      welcomeBack: 'Welcome back',
+      aiTools: 'AI Tools', systemInfo: 'Infrastructure',
+      checklistProgress: 'Checklist Progress', viewAll: 'View all',
+      noChecklistsYet: 'No checklists yet', startChecklist: 'Create checklist',
+      overallProgress: 'Overall progress',
+    },
+    users: {
+      title: 'Users', createUser: 'Create user', email: 'Email', name: 'Name',
+      role: 'Role', status: 'Status', active: 'Active', inactive: 'Inactive',
+      actions: 'Actions', editUser: 'Edit', deactivate: 'Deactivate', activate: 'Activate',
+      superadmin: 'Superadmin', admin: 'Admin', client: 'Client',
+      createdAt: 'Created', confirmDeactivate: 'Deactivate this user?',
+      userCreated: 'User created successfully',
+      password: 'Password', cancel: 'Cancel', create: 'Create', search: 'Search users...',
+      allRoles: 'All roles', filterRole: 'Filter by role', noUsers: 'No users',
+    },
     admin: { usersTitle: 'Users', createUser: 'Create User', userCount: 'Total users', activeUsers: 'Active', role: 'Role', status: 'Status', actions: 'Actions', deactivate: 'Deactivate', activate: 'Activate' },
     ai: { systemMessage: 'System message (optional)', systemMessagePlaceholder: 'You are a helpful assistant...', prompt: 'Prompt', promptPlaceholder: 'Write your prompt here...', temperature: 'Temperature', generate: 'Generate', generating: 'Generating...', result: 'Result', textToSummarize: 'Text to Summarize', textToSummarizePlaceholder: 'Paste the text you want to summarize...', summarize: 'Summarize', summarizing: 'Summarizing...', summary: 'Summary' },
     footer: { description: 'Fullstack monorepo with AI, robust auth and automation. Production-ready.', navTitle: 'Navigation', stackTitle: 'Stack', statusTitle: 'Status', statusMsg: 'System operational', location: 'Dev · Local', rights: 'All rights reserved', madeWith: 'Built with' },
@@ -205,6 +249,11 @@ const translations: Record<Locale, Messages> = {
       estimatedMin: 'est. min', mins: 'min',
       saveSuccess: 'Checklist saved!', deleteSuccess: 'Checklist deleted',
       navChecklist: 'Checklists',
+      tabTasks: 'Tasks', tabDashboard: 'Dashboard', tabGlobal: 'Global',
+      pendingSection: 'Pending', completedSection: 'Completed',
+      globalDashboard: 'Global Dashboard',
+      aiToolsTitle: 'AI Tools',
+      aiToolsDesc: 'Generate and summarize text with artificial intelligence',
     },
   },
 };

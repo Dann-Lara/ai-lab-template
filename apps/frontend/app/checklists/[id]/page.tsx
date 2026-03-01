@@ -2,11 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import { useI18n } from '../../../lib/i18n-context';
 import { useAuth } from '../../../hooks/useAuth';
 import { Navbar } from '../../../components/ui/Navbar';
 import { TaskCard } from '../../../components/checklists/TaskCard';
 import { ProgressRing, BarChart } from '../../../components/checklists/ProgressRing';
+import {
+  IconChevronLeft, IconBrain, IconPlay, IconPause, IconTrash, IconSparkle,
+} from '../../../components/checklists/Icons';
 import { checklistsApi, type Checklist, type ProgressData } from '../../../lib/checklists';
 
 const USER_ROLES = ['superadmin', 'admin', 'client'];
@@ -34,12 +38,12 @@ export default function ChecklistDetailPage() {
   const { user, loading: authLoading } = useAuth(USER_ROLES);
 
   const [checklist, setChecklist] = useState<Checklist | null>(null);
-  const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [progress, setProgress]   = useState<ProgressData | null>(null);
   const [loadingData, setLoadingData] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError]           = useState('');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [deleteModal, setDeleteModal] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deleteModal, setDeleteModal]         = useState(false);
+  const [actionLoading, setActionLoading]     = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'tasks' | 'dashboard'>('tasks');
 
   const load = useCallback(async () => {
@@ -112,23 +116,28 @@ export default function ChecklistDetailPage() {
     (a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()
   )[0];
 
-  const pendingTasks = checklist.items.filter((i) => i.status === 'pending');
+  const pendingTasks   = checklist.items.filter((i) => i.status === 'pending');
   const completedTasks = checklist.items.filter((i) => i.status === 'completed');
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
       <Navbar variant={user?.role === 'client' ? 'client' : 'admin'} />
 
-      <div className="max-w-4xl mx-auto px-6 md:px-8 pt-24 pb-20">
+      {/* ── Same max-width as list page ── */}
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-20 pb-20">
+
+        {/* Back link */}
+        <div className="pt-6 mb-6">
+          <Link href="/checklists"
+            className="font-mono text-[10px] text-slate-400 hover:text-sky-500 dark:hover:text-sky-400
+                       transition-colors flex items-center gap-1.5 w-fit">
+            <IconChevronLeft size={12} />
+            <span suppressHydrationWarning>{t.checklist.myChecklists}</span>
+          </Link>
+        </div>
 
         {/* Header */}
-        <div className="mb-8">
-          <button onClick={() => router.push('/checklists')}
-            className="font-mono text-[10px] text-slate-400 hover:text-sky-500 dark:hover:text-sky-400
-                       transition-colors mb-6 flex items-center gap-1.5">
-            ← {t.checklist.myChecklists}
-          </button>
-
+        <div className="pb-8 border-b border-slate-200 dark:border-slate-800/60 mb-8">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-3 flex-wrap">
@@ -142,10 +151,10 @@ export default function ChecklistDetailPage() {
                   </span>
                 )}
               </div>
-              <h1 className="headline text-4xl md:text-5xl text-slate-900 dark:text-white leading-tight">
+              <h1 className="headline text-4xl md:text-6xl text-slate-900 dark:text-white leading-tight mb-2">
                 {checklist.title}
               </h1>
-              <p className="font-mono text-[11px] text-slate-500 mt-2 leading-relaxed">
+              <p className="font-mono text-[11px] text-slate-500 leading-relaxed max-w-2xl">
                 {checklist.objective}
               </p>
               <div className="flex items-center gap-4 mt-3 flex-wrap">
@@ -158,25 +167,31 @@ export default function ChecklistDetailPage() {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {/* Action buttons — clean row, no ghost toggle next to pause */}
+            <div className="flex items-center gap-2 shrink-0 mt-1">
               <button onClick={handleStatusToggle}
-                className="btn-ghost text-[10px] py-1.5 px-3" suppressHydrationWarning>
-                {checklist.status === 'active' ? `${t.checklist.pauseChecklist}` : `${t.checklist.resumeChecklist}`}
+                className="btn-ghost text-[10px] py-2 px-3 flex items-center gap-1.5">
+                {checklist.status === 'active'
+                  ? <><IconPause size={12} /><span suppressHydrationWarning>{t.checklist.pauseChecklist}</span></>
+                  : <><IconPlay size={12} /><span suppressHydrationWarning>{t.checklist.resumeChecklist}</span></>
+                }
               </button>
               <button onClick={() => setDeleteModal(true)}
-                className="btn-ghost text-[10px] py-1.5 px-3 hover:border-red-300 dark:hover:border-red-400/30
+                className="btn-ghost text-[10px] py-2 px-3 flex items-center gap-1.5
+                           hover:border-red-300 dark:hover:border-red-400/30
                            hover:text-red-500 dark:hover:text-red-400 transition-colors">
-                </button>
+                <IconTrash size={12} />
+              </button>
             </div>
           </div>
         </div>
 
+        {/* Error */}
         {error && (
           <div className="mb-6 p-3 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20
                           font-mono text-[11px] text-red-600 dark:text-red-400 flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={() => setError('')} className="opacity-60 hover:opacity-100">✕</button>
+            <button onClick={() => setError('')} className="opacity-60 hover:opacity-100 ml-4">✕</button>
           </div>
         )}
 
@@ -190,20 +205,22 @@ export default function ChecklistDetailPage() {
                             ? 'border-sky-500 text-sky-600 dark:text-sky-400'
                             : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                           }`}>
-              {tab === 'tasks' ? `✓ Tareas (${pendingTasks.length})` : 'Dashboard'}
+              {tab === 'tasks'
+                ? <span suppressHydrationWarning>{t.checklist.tabTasks} ({pendingTasks.length})</span>
+                : <span suppressHydrationWarning>{t.checklist.tabDashboard}</span>
+              }
             </button>
           ))}
         </div>
 
-        {/* ─── TASKS TAB ─────────────────────────────────────────────────── */}
+        {/* ─── TASKS TAB ─────────────────────────────────────────────── */}
         {activeTab === 'tasks' && (
           <div className="space-y-6">
-            {/* Pending */}
-            {pendingTasks.length > 0 && (
+            {pendingTasks.length > 0 ? (
               <div>
                 <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-slate-400 mb-4"
                    suppressHydrationWarning>
-                  {t.checklist.tasksPending} ({pendingTasks.length})
+                  {t.checklist.pendingSection} ({pendingTasks.length})
                 </p>
                 <div className="space-y-3">
                   {pendingTasks.map((task) => (
@@ -225,31 +242,32 @@ export default function ChecklistDetailPage() {
                   ))}
                 </div>
               </div>
-            )}
-
-            {pendingTasks.length === 0 && (
+            ) : (
               <div className="py-16 text-center">
-                <div className="text-5xl mb-4">🎉</div>
+                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-500/15
+                                flex items-center justify-center mx-auto mb-4
+                                text-emerald-600 dark:text-emerald-400">
+                  <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                    <path d="M4 14l6 6 14-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
                 <p className="headline text-3xl text-slate-900 dark:text-white mb-2">
                   ¡Todo completado!
-                </p>
-                <p className="font-mono text-[11px] text-slate-500">
-                  Has completado todas las tareas de este checklist.
                 </p>
               </div>
             )}
 
-            {/* Completed */}
             {completedTasks.length > 0 && (
               <details className="group">
                 <summary className="font-mono text-[9px] uppercase tracking-[0.3em] text-slate-400
                                     cursor-pointer hover:text-sky-500 dark:hover:text-sky-400
-                                    transition-colors flex items-center gap-2 mb-4 list-none">
+                                    transition-colors flex items-center gap-2 mb-4 list-none"
+                         suppressHydrationWarning>
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
-                    className="group-open:rotate-180 transition-transform">
+                       className="group-open:rotate-180 transition-transform shrink-0">
                     <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
                   </svg>
-                  {t.checklist.tasksCompleted} ({completedTasks.length})
+                  {t.checklist.completedSection} ({completedTasks.length})
                 </summary>
                 <div className="space-y-3">
                   {completedTasks.map((task) => (
@@ -261,10 +279,10 @@ export default function ChecklistDetailPage() {
           </div>
         )}
 
-        {/* ─── DASHBOARD TAB ─────────────────────────────────────────────── */}
+        {/* ─── DASHBOARD TAB ─────────────────────────────────────────── */}
         {activeTab === 'dashboard' && progress && (
           <div className="space-y-6">
-            {/* Stats grid */}
+            {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { label: t.checklist.tasksCompleted, value: progress.completed, color: 'text-emerald-600 dark:text-emerald-400' },
@@ -280,12 +298,11 @@ export default function ChecklistDetailPage() {
               ))}
             </div>
 
-            {/* Progress ring */}
+            {/* Ring + chart */}
             <div className="card p-6 flex flex-col md:flex-row items-center gap-8">
-              <div className="relative">
+              <div className="relative shrink-0">
                 <ProgressRing
-                  value={progress.completionRate}
-                  size={100} stroke={8}
+                  value={progress.completionRate} size={100} stroke={8}
                   color={progress.completionRate >= 80 ? '#34d399' : progress.completionRate >= 40 ? '#38bdf8' : '#f59e0b'}
                   label={t.checklist.completionRate}
                 />
@@ -298,14 +315,18 @@ export default function ChecklistDetailPage() {
             {/* AI Feedback */}
             <div className="card p-6">
               <div className="flex items-center justify-between mb-4">
-                <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-slate-400"
+                <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-slate-400 flex items-center gap-2"
                    suppressHydrationWarning>
+                  <IconBrain size={12} />
                   {t.checklist.aiFeedback}
                 </p>
                 <button onClick={() => void handleFeedback()} disabled={feedbackLoading}
                   className="btn-ghost text-[10px] py-1.5 px-3 flex items-center gap-1.5"
                   suppressHydrationWarning>
-                  {feedbackLoading ? <Spinner /> : `${t.checklist.generateFeedback}`}
+                  {feedbackLoading
+                    ? <Spinner />
+                    : <><IconSparkle size={11} /> {t.checklist.generateFeedback}</>
+                  }
                 </button>
               </div>
               {latestFeedback ? (
@@ -331,7 +352,7 @@ export default function ChecklistDetailPage() {
       {/* Delete modal */}
       {deleteModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm">
-          <div className="w-full max-w-sm card p-6 space-y-4 animate-fade-in shadow-2xl">
+          <div className="w-full max-w-sm card p-6 space-y-4 shadow-2xl">
             <h3 className="headline text-2xl text-slate-900 dark:text-white" suppressHydrationWarning>
               {t.checklist.deleteChecklist}
             </h3>
@@ -341,11 +362,11 @@ export default function ChecklistDetailPage() {
             <div className="flex gap-2">
               <button onClick={() => void handleDelete()}
                 className="flex-1 py-2.5 rounded-lg font-mono text-[11px] uppercase tracking-widest
-                           bg-red-500 hover:bg-red-600 text-white transition-colors">
+                           bg-red-500 hover:bg-red-600 text-white transition-colors" suppressHydrationWarning>
                 {t.checklist.deleteChecklist}
               </button>
-              <button onClick={() => setDeleteModal(false)} className="btn-ghost flex-1">
-                ✕
+              <button onClick={() => setDeleteModal(false)} className="btn-ghost flex-1" suppressHydrationWarning>
+                {t.checklist.cancel ?? 'Cancelar'}
               </button>
             </div>
           </div>
