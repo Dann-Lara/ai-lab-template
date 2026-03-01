@@ -56,6 +56,19 @@ export default function ClientDashboard(): React.JSX.Element {
           </button>
         </div>
 
+        {/* Checklist shortcut */}
+        <div className="mb-6 p-4 rounded-xl border border-sky-200 dark:border-sky-400/20
+                        bg-sky-50 dark:bg-sky-400/5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">✅</span>
+            <div>
+              <p className="font-mono text-[11px] font-semibold text-sky-700 dark:text-sky-300">Checklists Inteligentes</p>
+              <p className="font-mono text-[10px] text-slate-500">Crea y gestiona checklists con IA</p>
+            </div>
+          </div>
+          <a href="/checklists" className="btn-primary text-[10px] py-2 px-4">Ver →</a>
+        </div>
+
         {/* Welcome info */}
         <div className="mb-8 p-5 rounded-xl border border-emerald-200 dark:border-emerald-500/20
                         bg-emerald-50 dark:bg-emerald-500/5">

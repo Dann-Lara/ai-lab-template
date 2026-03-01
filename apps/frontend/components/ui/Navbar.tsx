@@ -108,6 +108,13 @@ export function Navbar({ variant = 'public' }: { variant?: 'public' | 'admin' | 
                     </Link>
                   </li>
                 )}
+                <li>
+                  <Link href="/checklists"
+                    className="text-[10px] font-mono uppercase tracking-[0.25em]
+                               text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors">
+                    {t.nav.checklist}
+                  </Link>
+                </li>
               </ul>
             )}
 
@@ -181,6 +188,7 @@ export function Navbar({ variant = 'public' }: { variant?: 'public' | 'admin' | 
               {(!isDash ? PUBLIC_LINKS.map((l, i) => ({ href: l.href, label: l.label, idx: i + 1 })) : [
                 { href: variant === 'admin' ? '/admin' : '/client', label: t.nav.dashboard, idx: 1 },
                 ...(variant === 'admin' ? [{ href: '/admin/users', label: t.nav.users, idx: 2 }] : []),
+              { href: '/checklists', label: t.nav.checklist, idx: 3 },
               ]).map(({ href, label, idx }) => (
                 <li key={href}>
                   <Link href={href} onClick={() => setMenuOpen(false)} className="group flex items-end gap-4 py-3">
