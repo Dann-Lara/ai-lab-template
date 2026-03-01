@@ -67,14 +67,11 @@ function parseAiJson(
   text: string,
   logger?: { warn: (m: string) => void; debug: (m: string) => void },
 ): AiDraft {
-  // Log raw AI response for debugging
-  const preview = text.length > 600
-    ? `${text.slice(0, 600)}...[+${text.length - 600} chars]`
-    : text;
+  // Log full raw AI response — critical for debugging truncation / format issues
   if (logger) {
-    logger.debug(`AI raw response (${text.length} chars):\n${preview}`);
+    logger.debug(`AI raw response (${text.length} chars, maxTokens=4000):\n${text}`);
   } else {
-    console.log(`[AI-Debug] Raw response (${text.length} chars):\n${preview}`);
+    console.log(`[AI-Debug] Raw (${text.length} chars):\n${text}`);
   }
 
   // Strip markdown fences: ```json...``` or ```...```
@@ -138,37 +135,37 @@ async function withRetry<T>(
 
 // ── Build prompts ────────────────────────────────────────────────────────────
 function buildGenerationPrompt(p: CreateChecklistParamsDto): string {
-  return `You are a productivity expert. Generate a personalized checklist from:
-Title: ${p.title}
-Objective: ${p.objective}
-${p.category ? `Category: ${p.category}` : ''}
-Start: ${p.startDate} | End: ${p.endDate}
-Difficulty: ${p.difficulty} | Daily time: ${p.dailyTimeAvailable} min
-${p.goalMetric ? `Goal: ${p.goalMetric}` : ''}
-Style: ${p.style}
-Language: ${p.language ?? 'es'}
+  const lang = p.language ?? 'es';
+  return `Productivity expert. Output ONLY valid JSON — start with { end with } — no markdown, no text outside JSON.
 
-Generate 5-15 tasks. Each task MUST have:
-- description: actionable text in the specified language
-- frequency: "once","daily","weekly", or "custom"
-- customFrequencyDays: (integer, only if frequency is "custom")
-- estimatedDuration: minutes (integer)
-- hack: motivational tip max 140 chars in the specified language
+Input:
+- title: ${p.title}
+- objective: ${p.objective}
+${p.category ? `- category: ${p.category}` : ''}
+- period: ${p.startDate} to ${p.endDate}
+- difficulty: ${p.difficulty}
+- daily_minutes: ${p.dailyTimeAvailable}
+${p.goalMetric ? `- goal: ${p.goalMetric}` : ''}
+- style: ${p.style}
+- language: ${lang}
 
-Total estimated daily duration must not exceed ${p.dailyTimeAvailable} minutes.
-Optionally include "rationale" string (max 200 chars).
+Rules:
+1. Generate 5-10 tasks (keep descriptions SHORT: max 80 chars each, in ${lang})
+2. hack: max 80 chars in ${lang}
+3. Sum of daily task durations <= ${p.dailyTimeAvailable} min
+4. frequency must be one of: "once","daily","weekly","custom"
+5. rationale: max 100 chars in ${lang}
 
-CRITICAL: Respond with ONLY a raw JSON object. No markdown, no code fences, no explanation before or after.
-The response must start with { and end with }. Example format:
-{"items":[{"description":"...","frequency":"daily","estimatedDuration":15,"hack":"..."}],"rationale":"..."}` ;
+Required JSON schema (no extra fields, no comments):
+{"items":[{"description":"string","frequency":"daily","estimatedDuration":15,"hack":"string"}],"rationale":"string"}`;
 }
 
 function buildRegenerationPrompt(p: CreateChecklistParamsDto, feedback: string): string {
   return `${buildGenerationPrompt(p)}
 
-User feedback on previous draft: "${feedback}"
+User feedback: "${feedback}"
 
-Generate a revised list incorporating this feedback. Keep the same JSON format.`;
+Apply feedback. Output ONLY the revised JSON — same schema, no extra text.`;
 }
 
 function buildFeedbackPrompt(data: {
@@ -215,7 +212,7 @@ export class ChecklistsService {
     const prompt = buildGenerationPrompt(params);
 
     const draft = await withRetry(async () => {
-      const { text } = await generateText({ prompt, maxTokens: 2000, temperature: 0.7 });
+      const { text } = await generateText({ prompt, maxTokens: 4000, temperature: 0.6 });
       return parseAiJson(text, { warn: (m) => this.logger.warn(m), debug: (m) => this.logger.debug(m) });
     }, 2, 2000);
 
@@ -240,7 +237,7 @@ export class ChecklistsService {
     const prompt = buildRegenerationPrompt(dto.parameters, dto.feedback);
 
     const draft = await withRetry(async () => {
-      const { text } = await generateText({ prompt, maxTokens: 2000, temperature: 0.75 });
+      const { text } = await generateText({ prompt, maxTokens: 4000, temperature: 0.6 });
       return parseAiJson(text, { warn: (m) => this.logger.warn(m), debug: (m) => this.logger.debug(m) });
     }, 2, 2000);
 

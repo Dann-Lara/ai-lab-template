@@ -19,7 +19,7 @@ export async function generateText(options: GenerateTextOptions): Promise<Genera
     prompt: options.prompt,
     systemMessage: options.systemMessage ?? 'You are a helpful AI assistant.',
     temperature: options.temperature,
-    maxTokens: options.maxTokens ?? 1024,
+    maxTokens: options.maxTokens ?? 4096,
     model: options.model,
   });
 
