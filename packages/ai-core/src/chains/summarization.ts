@@ -1,7 +1,4 @@
-import { StringOutputParser } from '@langchain/core/output_parsers';
-import { ChatPromptTemplate } from '@langchain/core/prompts';
-
-import { getLLM } from '../llm/openai';
+import { executeWithFallback } from '../llm/executor';
 
 export interface SummarizeOptions {
   text: string;
@@ -12,17 +9,12 @@ export interface SummarizeOptions {
 export async function summarizeText(options: SummarizeOptions): Promise<string> {
   const { text, maxLength = 200, language = 'Spanish' } = options;
 
-  const llm = getLLM({ temperature: 0.3 });
-  const outputParser = new StringOutputParser();
+  const result = await executeWithFallback({
+    systemMessage: `You are an expert summarizer. Summarize text concisely in ${language} in under ${maxLength} words.`,
+    prompt: `Text to summarize:\n\n${text}`,
+    temperature: 0.3,
+    maxTokens: 512,
+  });
 
-  const prompt = ChatPromptTemplate.fromMessages([
-    [
-      'system',
-      `You are an expert summarizer. Summarize text concisely in ${language} in under ${maxLength} words.`,
-    ],
-    ['human', 'Text to summarize:\n\n{text}'],
-  ]);
-
-  const chain = prompt.pipe(llm).pipe(outputParser);
-  return chain.invoke({ text });
+  return result.text;
 }

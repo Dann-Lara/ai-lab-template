@@ -24,4 +24,10 @@ export class AiController {
   async summarize(@Body() dto: SummarizeDto): Promise<{ result: string }> {
     return this.aiService.summarize(dto);
   }
+
+  @Get('providers')
+  @ApiOperation({ summary: 'List active AI providers and their status' })
+  getProviderStatus() {
+    return this.aiService.getProviderStatus();
+  }
 }

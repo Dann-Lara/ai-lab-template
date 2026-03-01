@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
-import { generateText, summarizeText } from '@ai-lab/ai-core';
+import { generateText, summarizeText, getActiveProviders } from '@ai-lab/ai-core';
 
 import type { GenerateDto } from './dto/generate.dto';
 import type { SummarizeDto } from './dto/summarize.dto';
@@ -35,5 +35,19 @@ export class AiService {
       this.logger.error('AI summarization failed', error);
       throw new InternalServerErrorException('Failed to summarize text');
     }
+  }
+
+  getProviderStatus() {
+    const providers = getActiveProviders();
+    return {
+      active: providers.length,
+      providers: providers.map((p) => ({
+        name: p.name,
+        available: true,
+        model: process.env[p.modelEnvKey] ?? p.defaultModel,
+        priority: p.priority,
+      })),
+      priorityOverride: process.env['AI_PROVIDER_PRIORITY'] ?? null,
+    };
   }
 }

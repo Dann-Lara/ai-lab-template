@@ -1,28 +1,23 @@
-import { ChatOpenAI } from '@langchain/openai';
+/**
+ * @deprecated Use createLLM() from ./factory instead.
+ * Kept for backward compatibility.
+ */
+import { createLLM } from './factory';
 
 export interface LLMOptions {
   temperature?: number;
   maxTokens?: number;
   modelName?: string;
-  streaming?: boolean;
 }
 
-export function getLLM(options: LLMOptions = {}): ChatOpenAI {
-  const {
-    temperature = 0.7,
-    maxTokens = 1024,
-    modelName = process.env['OPENAI_DEFAULT_MODEL'] ?? 'gpt-4o-mini',
-    streaming = false,
-  } = options;
-
-  if (!process.env['OPENAI_API_KEY']) {
-    throw new Error('OPENAI_API_KEY environment variable is required');
-  }
-
-  return new ChatOpenAI({
-    modelName,
-    temperature,
-    maxTokens,
-    streaming,
+export async function getLLM(options: LLMOptions = {}) {
+  // Try OpenAI first (old behavior), fall back to any available provider
+  const providers = (await import('../providers/registry')).getActiveProviders();
+  const provider = providers.find((p) => p.name === 'openai') ?? providers[0];
+  if (!provider) throw new Error('No AI provider available');
+  return createLLM(provider.name, {
+    temperature: options.temperature,
+    maxTokens: options.maxTokens,
+    model: options.modelName,
   });
 }
