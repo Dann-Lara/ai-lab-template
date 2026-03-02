@@ -57,6 +57,7 @@ export default function NewChecklistPage() {
   const [regenModal, setRegenModal] = useState(false);
   const [regenFeedback, setRegenFeedback] = useState('');
   const [regenLoading, setRegenLoading] = useState(false);
+  const [showTelegramHelp, setShowTelegramHelp] = useState(false);
 
   const dragIdx = useRef<number | null>(null);
   const dragOverIdx = useRef<number | null>(null);
