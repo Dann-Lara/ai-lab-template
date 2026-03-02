@@ -95,14 +95,33 @@ if (-not (Test-Path ".env")) {
     Write-Warn "Already exists: .env"
 }
 
-# Per-app .env — only needed when running WITHOUT Docker
-foreach ($f in @("apps/backend/.env.example", "apps/frontend/.env.example")) {
-    $dest = $f -replace ".example", ""
-    if (-not (Test-Path $dest)) {
-        Copy-Item $f $dest
-        Write-Success "Created: $dest"
-    } else {
-        Write-Warn "Already exists: $dest"
+# apps/backend/.env — for running backend locally WITHOUT Docker
+$backendEnv = "apps/backend/.env"
+if (-not (Test-Path $backendEnv)) {
+    Copy-Item "apps/backend/.env.example" $backendEnv
+    Write-Success "Created: $backendEnv"
+} else {
+    # Ensure critical keys exist (migration guard for older installs)
+    $envContent = Get-Content $backendEnv -Raw
+    foreach ($key in @("DATABASE_URL", "REDIS_URL", "JWT_SECRET")) {
+        if ($envContent -notmatch "^$key=") {
+            $default = (Get-Content "apps/backend/.env.example") | Where-Object { $_ -match "^$key=" } | Select-Object -First 1
+            if ($default) {
+                Add-Content $backendEnv ""
+                Add-Content $backendEnv "# Added by setup (key was missing)"
+                Add-Content $backendEnv $default
+                Write-Success "Added missing $key to $backendEnv"
+            }
+        }
+    }
+    Write-Warn "Already exists: $backendEnv (checked required keys)"
+}
+
+# apps/frontend/.env.local
+if (-not (Test-Path "apps/frontend/.env.local")) {
+    if (Test-Path "apps/frontend/.env.example") {
+        Copy-Item "apps/frontend/.env.example" "apps/frontend/.env.local"
+        Write-Success "Created: apps/frontend/.env.local"
     }
 }
 

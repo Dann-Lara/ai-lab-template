@@ -48,16 +48,33 @@ else
   echo -e "${YELLOW}  [!!] Already exists: .env${NC}"
 fi
 
-# Per-app .env — only needed when running WITHOUT Docker
-for f in apps/backend/.env.example apps/frontend/.env.example; do
-  dest="${f%.example}"
-  if [ ! -f "$dest" ]; then
-    cp "$f" "$dest"
-    echo -e "${GREEN}  [OK] Created: $dest${NC}"
-  else
-    echo -e "${YELLOW}  [!!] Already exists: $dest${NC}"
-  fi
-done
+# apps/backend/.env — for running backend locally WITHOUT Docker
+BACKEND_ENV="apps/backend/.env"
+if [ ! -f "$BACKEND_ENV" ]; then
+  cp "apps/backend/.env.example" "$BACKEND_ENV"
+  echo -e "${GREEN}  [OK] Created: $BACKEND_ENV${NC}"
+else
+  # Ensure critical keys exist in older .env files (migration guard)
+  for key in DATABASE_URL REDIS_URL JWT_SECRET; do
+    if ! grep -q "^${key}=" "$BACKEND_ENV" 2>/dev/null; then
+      # Extract default value from .env.example and append
+      default=$(grep "^${key}=" "apps/backend/.env.example" | head -1)
+      if [ -n "$default" ]; then
+        echo "" >> "$BACKEND_ENV"
+        echo "# Added by setup (key was missing)" >> "$BACKEND_ENV"
+        echo "$default" >> "$BACKEND_ENV"
+        echo -e "${GREEN}  [OK] Added missing ${key} to $BACKEND_ENV${NC}"
+      fi
+    fi
+  done
+  echo -e "${YELLOW}  [!!] Already exists: $BACKEND_ENV (checked required keys)${NC}"
+fi
+
+# apps/frontend/.env.local
+if [ ! -f "apps/frontend/.env.local" ]; then
+  cp "apps/frontend/.env.example" "apps/frontend/.env.local" 2>/dev/null || true
+  echo -e "${GREEN}  [OK] Created: apps/frontend/.env.local${NC}"
+fi
 
 echo -e ""
 echo -e "  ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
