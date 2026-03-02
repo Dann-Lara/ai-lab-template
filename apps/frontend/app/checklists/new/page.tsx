@@ -535,8 +535,8 @@ export default function NewChecklistPage() {
           </div>
         </div>
       )}
-    </div>
       {showTelegramHelp && <TelegramHelpModal onClose={() => setShowTelegramHelp(false)} />}
+    </div>
   );
 }
 
