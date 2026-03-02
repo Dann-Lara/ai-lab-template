@@ -18,7 +18,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists",
+        "url": "={{ $vars.BACKEND_PUBLIC_URL }}/v1/checklists",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": { "timeout": 15000 }
@@ -43,7 +43,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists/{{ $json.id }}/feedback",
+        "url": "={{ $vars.BACKEND_PUBLIC_URL }}/v1/checklists/{{ $json.id }}/feedback",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
@@ -71,7 +71,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/webhooks/n8n",
+        "url": "={{ $vars.BACKEND_PUBLIC_URL }}/v1/webhooks/n8n",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",

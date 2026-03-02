@@ -41,3 +41,17 @@ lerna-debug.log*
 
 # Docker
 docker/data/
+
+# ── Environment files (NEVER commit real env files) ──────────────────────────
+.env
+.env.staging
+.env.prod
+.env.local
+apps/backend/.env
+apps/frontend/.env.local
+# Keep examples in git
+!.env.example
+!.env.staging.example
+!.env.prod.example
+!apps/backend/.env.example
+!apps/frontend/.env.example

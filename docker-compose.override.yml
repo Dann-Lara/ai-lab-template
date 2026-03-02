@@ -1,14 +1,11 @@
-
-# ─────────────────────────────────────────────────────────────────
-# Development overrides — hot reload + debug ports
-# ─────────────────────────────────────────────────────────────────
-
+# ─────────────────────────────────────────────────────────────────────────────
+# Development overrides — loaded automatically by docker compose
+# Hot reload + source mounts
+# ─────────────────────────────────────────────────────────────────────────────
 services:
   backend:
     build:
       target: development
-    environment:
-      NODE_ENV: development
     volumes:
       - ./apps/backend/src:/app/apps/backend/src
       - ./packages/ai-core/src:/app/packages/ai-core/src
@@ -18,8 +15,6 @@ services:
   frontend:
     build:
       target: development
-    environment:
-      NODE_ENV: development
     volumes:
       - ./apps/frontend:/app/apps/frontend
       - /app/apps/frontend/node_modules

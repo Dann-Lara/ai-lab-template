@@ -45,7 +45,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/webhooks/telegram-response",
+        "url": "={{ $vars.BACKEND_PUBLIC_URL }}/v1/webhooks/telegram-response",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",

@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Staging overrides
+#
+# Usage:
+#   docker compose --env-file .env.staging \
+#     -f docker-compose.yml \
+#     -f docker-compose.staging.yml \
+#     up -d
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+  backend:
+    build:
+      target: production
+    restart: always
+
+  frontend:
+    build:
+      target: production
+    restart: always
+
+  n8n:
+    restart: always
+    # Staging: expose n8n only behind a reverse proxy, not directly
+    ports: []
+
+  postgres:
+    # Don't expose DB port in staging — only accessible inside Docker network
+    ports: []
+
+  redis:
+    ports: []

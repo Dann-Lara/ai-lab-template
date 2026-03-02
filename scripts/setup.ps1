@@ -86,20 +86,32 @@ if (Test-Path ".git") {
 
 # -- 4. COPY .ENV FILES -------------------------------------------
 Write-Step "Setting up environment files..."
-$rootPath = (Get-Location).Path
-$envExamples = Get-ChildItem -Path "." -Filter ".env.example" -Recurse -ErrorAction SilentlyContinue |
-    Where-Object { $_.FullName -notlike "*\node_modules\*" -and $_.FullName -notlike "*\.next\*" }
 
-foreach ($example in $envExamples) {
-    $envFile = $example.FullName -replace "\.example$", ""
-    $relPath  = $example.FullName.Replace($rootPath + "\", "")
-    if (-not (Test-Path $envFile)) {
-        Copy-Item $example.FullName $envFile
-        Write-Success "Created: $relPath"
+# Root .env — used by Docker Compose for ALL services
+if (-not (Test-Path ".env")) {
+    Copy-Item ".env.example" ".env"
+    Write-Success "Created: .env (from .env.example)"
+} else {
+    Write-Warn "Already exists: .env"
+}
+
+# Per-app .env — only needed when running WITHOUT Docker
+foreach ($f in @("apps/backend/.env.example", "apps/frontend/.env.example")) {
+    $dest = $f -replace ".example", ""
+    if (-not (Test-Path $dest)) {
+        Copy-Item $f $dest
+        Write-Success "Created: $dest"
     } else {
-        Write-Warn "Already exists, skipped: $relPath"
+        Write-Warn "Already exists: $dest"
     }
 }
+
+Write-Host ""
+Write-Warn "ACTION REQUIRED: Edit .env and set your keys:"
+Write-Host "  - At least one AI provider key (GEMINI_API_KEY, GROQ_API_KEY, etc.)"
+Write-Host "  - TELEGRAM_BOT_TOKEN + TELEGRAM_BOT_USERNAME"
+Write-Host "  - Change JWT_SECRET, DB_PASSWORD, N8N_PASSWORD before staging/prod"
+Write-Host ""
 
 # -- 5. CHECK OPENAI KEY ------------------------------------------
 $backendEnv = "apps\backend\.env"

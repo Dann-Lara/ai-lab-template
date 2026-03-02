@@ -1,15 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# AI Lab Template — Base Docker Compose
+#
+# All runtime values come from ONE root .env file per environment:
+#
+#   Local dev:  .env                    ← copy from .env.example
+#   Staging:    .env.staging            ← copy from .env.example, change URLs
+#   Production: .env.prod               ← copy from .env.example, change URLs + secrets
+#
+# Override files (loaded on top of this file):
+#   Dev  (automatic): docker-compose.override.yml
+#   Stg:  docker compose --env-file .env.staging -f docker-compose.yml -f docker-compose.staging.yml up
+#   Prod: docker compose --env-file .env.prod    -f docker-compose.yml -f docker-compose.prod.yml    up
+#
+# The ONLY things that differ between environments are values in the .env.* file.
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: ailab_postgres
+    container_name: ${COMPOSE_PROJECT_NAME:-ailab}_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-ailab}
-      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_DB:       ${DB_NAME:-ailab}
+      POSTGRES_USER:     ${DB_USER:-admin}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
     ports:
-      - "5432:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -19,12 +37,13 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis ───────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: ailab_redis
+    container_name: ${COMPOSE_PROJECT_NAME:-ailab}_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -34,85 +53,131 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── n8n ─────────────────────────────────────────────────────────────────────
   n8n:
     image: n8nio/n8n:latest
-    container_name: ailab_n8n
+    container_name: ${COMPOSE_PROJECT_NAME:-ailab}_n8n
     restart: unless-stopped
     ports:
-      - "5678:5678"
+      - "${N8N_PORT:-5678}:5678"
     environment:
-      - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=${N8N_DB_NAME:-n8n}
-      - DB_POSTGRESDB_USER=${DB_USER:-admin}
-      - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD:-secret}
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
-      - N8N_WEBHOOK_BASE_URL=${BACKEND_PUBLIC_URL:-http://localhost:3001}
-      - WEBHOOK_URL=http://localhost:5678/
-      - GENERIC_TIMEZONE=America/Mexico_City
-      - N8N_LOG_LEVEL=info
+      # ── Postgres storage ──────────────────────────────────────────────────
+      DB_TYPE:                      postgresdb
+      DB_POSTGRESDB_HOST:           postgres
+      DB_POSTGRESDB_PORT:           5432
+      DB_POSTGRESDB_DATABASE:       ${N8N_DB_NAME:-n8n}
+      DB_POSTGRESDB_USER:           ${DB_USER:-admin}
+      DB_POSTGRESDB_PASSWORD:       ${DB_PASSWORD:-secret}
+
+      # ── Auth & Security ───────────────────────────────────────────────────
+      N8N_BASIC_AUTH_ACTIVE:        "true"
+      N8N_BASIC_AUTH_USER:          ${N8N_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD:      ${N8N_PASSWORD:-admin123}
+      N8N_ENCRYPTION_KEY:           ${N8N_ENCRYPTION_KEY:-change-me-32-chars-minimum-here!}
+
+      # ── Webhook URL ───────────────────────────────────────────────────────
+      # PUBLIC URL where this n8n instance receives incoming webhooks
+      # (Telegram button callbacks, etc.)
+      # Dev:  http://localhost:5678/
+      # Stg:  https://n8n.staging.yourdomain.com/
+      # Prod: https://n8n.yourdomain.com/
+      WEBHOOK_URL:                  ${N8N_WEBHOOK_URL:-http://localhost:5678/}
+
+      # ── Variables feature (n8n >= 1.0 Community) ─────────────────────────
+      # Enables the Variables panel and $vars.* in workflow expressions.
+      # `npm run n8n:sync` pushes BACKEND_PUBLIC_URL + N8N_WEBHOOK_SECRET
+      # as n8n Variables so workflows never hardcode URLs or secrets.
+      N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE: "true"
+
+      # ── Misc ──────────────────────────────────────────────────────────────
+      GENERIC_TIMEZONE:             ${TIMEZONE:-America/Mexico_City}
+      N8N_LOG_LEVEL:                ${N8N_LOG_LEVEL:-info}
+      N8N_PERSONALIZATION_ENABLED:  "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_DIAGNOSTICS_ENABLED:      "false"
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - n8n_data:/home/node/.n8n
 
+  # ── Backend (NestJS) ────────────────────────────────────────────────────────
   backend:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
-      target: development
-    container_name: ailab_backend
+    container_name: ${COMPOSE_PROJECT_NAME:-ailab}_backend
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "${BACKEND_PORT:-3001}:3001"
     environment:
-      - NODE_ENV=development
-      - PORT=3001
-      - DATABASE_URL=postgresql://${DB_USER:-admin}:${DB_PASSWORD:-secret}@postgres:5432/${DB_NAME:-ailab}
-      - REDIS_URL=redis://redis:6379
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - JWT_SECRET=${JWT_SECRET:-change-me-in-development}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
-      - N8N_WEBHOOK_SECRET=${N8N_WEBHOOK_SECRET:-webhook-secret}
-      - N8N_BASE_URL=http://n8n:5678
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
-      - BACKEND_PUBLIC_URL=${BACKEND_PUBLIC_URL:-http://localhost:3001}
+      NODE_ENV:              ${NODE_ENV:-development}
+      PORT:                  3001
+      CORS_ORIGINS:          ${CORS_ORIGINS:-http://localhost:3000}
+
+      # ── Database & Cache (internal Docker DNS) ────────────────────────────
+      DATABASE_URL:          postgresql://${DB_USER:-admin}:${DB_PASSWORD:-secret}@postgres:5432/${DB_NAME:-ailab}
+      REDIS_URL:             redis://redis:6379
+
+      # ── Auth ──────────────────────────────────────────────────────────────
+      JWT_SECRET:            ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRES_IN:        ${JWT_EXPIRES_IN:-7d}
+
+      # ── Superadmin seed ───────────────────────────────────────────────────
+      SUPERADMIN_EMAIL:      ${SUPERADMIN_EMAIL:-superadmin@ailab.dev}
+      SUPERADMIN_PASSWORD:   ${SUPERADMIN_PASSWORD:-SuperAdmin123!}
+
+      # ── AI providers ──────────────────────────────────────────────────────
+      GEMINI_API_KEY:        ${GEMINI_API_KEY:-}
+      GEMINI_DEFAULT_MODEL:  ${GEMINI_DEFAULT_MODEL:-gemini-2.0-flash}
+      GROQ_API_KEY:          ${GROQ_API_KEY:-}
+      GROQ_DEFAULT_MODEL:    ${GROQ_DEFAULT_MODEL:-llama-3.3-70b-versatile}
+      OPENAI_API_KEY:        ${OPENAI_API_KEY:-}
+      OPENAI_DEFAULT_MODEL:  ${OPENAI_DEFAULT_MODEL:-gpt-4o-mini}
+      DEEPSEEK_API_KEY:      ${DEEPSEEK_API_KEY:-}
+      ANTHROPIC_API_KEY:     ${ANTHROPIC_API_KEY:-}
+      AI_PROVIDER_PRIORITY:  ${AI_PROVIDER_PRIORITY:-}
+
+      # ── n8n (internal Docker DNS for backend→n8n calls) ───────────────────
+      N8N_BASE_URL:          http://n8n:5678
+      N8N_WEBHOOK_SECRET:    ${N8N_WEBHOOK_SECRET:-change-me}
+      N8N_API_KEY:           ${N8N_API_KEY:-}
+      N8N_USER:              ${N8N_USER:-admin}
+      N8N_PASSWORD:          ${N8N_PASSWORD:-admin123}
+
+      # ── Telegram ──────────────────────────────────────────────────────────
+      TELEGRAM_BOT_TOKEN:    ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+
+      # ── Public URL (used in emails, n8n callbacks, etc.) ──────────────────
+      BACKEND_PUBLIC_URL:    ${BACKEND_PUBLIC_URL:-http://localhost:3001}
+
+      # ── Throttling ────────────────────────────────────────────────────────
+      THROTTLE_TTL:          ${THROTTLE_TTL:-60000}
+      THROTTLE_LIMIT:        ${THROTTLE_LIMIT:-100}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./apps/backend/src:/app/apps/backend/src
-      - ./packages:/app/packages
 
+  # ── Frontend (Next.js) ──────────────────────────────────────────────────────
   frontend:
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
-      target: development
-    container_name: ailab_frontend
+    container_name: ${COMPOSE_PROJECT_NAME:-ailab}_frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=development
-      - BACKEND_URL=http://backend:3001
-      - NEXT_PUBLIC_APP_NAME=AI Lab
-      - NEXT_PUBLIC_API_URL=http://localhost:3000/api
-      - NEXT_PUBLIC_TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME:-}
+      NODE_ENV:                          ${NODE_ENV:-development}
+      BACKEND_URL:                       http://backend:3001
+      NEXT_PUBLIC_API_URL:               ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api}
+      NEXT_PUBLIC_APP_NAME:              ${APP_NAME:-AI Lab}
+      NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
     depends_on:
       - backend
-    volumes:
-      - ./apps/frontend/app:/app/apps/frontend/app
-      - ./apps/frontend/components:/app/apps/frontend/components
-      - ./apps/frontend/hooks:/app/apps/frontend/hooks
-      - ./apps/frontend/lib:/app/apps/frontend/lib
 
 volumes:
   postgres_data:

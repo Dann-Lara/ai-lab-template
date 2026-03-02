@@ -39,7 +39,17 @@ fi
 
 #  4. ENV FILES 
 echo -e "\n${YELLOW}>> Setting up .env files...${NC}"
-for f in $(find . -name ".env.example" -not -path "*/node_modules/*" -not -path "*/.next/*"); do
+
+# Root .env — used by Docker Compose (ALL services read from here)
+if [ ! -f ".env" ]; then
+  cp ".env.example" ".env"
+  echo -e "${GREEN}  [OK] Created: .env (from .env.example)${NC}"
+else
+  echo -e "${YELLOW}  [!!] Already exists: .env${NC}"
+fi
+
+# Per-app .env — only needed when running WITHOUT Docker
+for f in apps/backend/.env.example apps/frontend/.env.example; do
   dest="${f%.example}"
   if [ ! -f "$dest" ]; then
     cp "$f" "$dest"
@@ -49,8 +59,10 @@ for f in $(find . -name ".env.example" -not -path "*/node_modules/*" -not -path 
   fi
 done
 
-grep -q "sk-your-api-key-here" apps/backend/.env 2>/dev/null \
-  && echo -e "\n${YELLOW}  [!!] ACTION: Set OPENAI_API_KEY in apps/backend/.env${NC}"
+echo -e "\n${YELLOW}  [!!] ACTION REQUIRED: Edit .env and set your keys:${NC}"
+echo -e "      - At least one AI provider key (GEMINI_API_KEY, GROQ_API_KEY, etc.)${NC}"
+echo -e "      - TELEGRAM_BOT_TOKEN + TELEGRAM_BOT_USERNAME (for reminders)${NC}"
+echo -e "      - Change JWT_SECRET, DB_PASSWORD, N8N_PASSWORD before production${NC}"
 
 #  5. DOCKER 
 echo -e "\n${YELLOW}>> Starting Docker services (postgres + redis)...${NC}"

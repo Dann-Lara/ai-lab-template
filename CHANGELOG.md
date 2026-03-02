@@ -4,6 +4,93 @@ All notable changes to AI Lab Template are documented here.
 
 ---
 
+## [v19c] — 2026-03-02
+
+### Added — n8n Workflow Auto-Sync + Multi-Environment Setup
+
+#### n8n Workflow Sync (`scripts/sync-n8n-workflows.js`)
+- **Full rewrite** with robust n8n Variables API support
+- Syncs `$vars.BACKEND_PUBLIC_URL` and `$vars.N8N_WEBHOOK_SECRET` as n8n Variables — workflows never have hardcoded URLs
+- Fallback chain: n8n API Key → Basic Auth (N8N_USER/N8N_PASSWORD)
+- Idempotent upsert: finds workflow by name → PUT (update) or POST (create)
+- Smart activation: schedule-trigger workflows activated automatically; Telegram/webhook-trigger workflows left inactive until credentials are added
+- Wait loop (up to 90s) for n8n to be ready before syncing
+- Detailed next-steps output with credential instructions
+
+#### n8n Variables — correct approach for workflow expressions
+- Workflows use `$vars.BACKEND_PUBLIC_URL` (n8n Variables) — NOT `$env.*` which is disabled in n8n >= 1.0 for security
+- Variables are pushed automatically on `npm run setup` and `npm run n8n:sync`
+- Changing `BACKEND_PUBLIC_URL` (e.g. stg → prod): just run `npm run n8n:sync` again
+
+#### Multi-environment Docker setup
+- `.env.staging.example` — staging template with [CHANGE] markers
+- `.env.prod.example` — production template with security guidance
+- `docker-compose.prod.yml` — fixed Redis password injection
+- `docker-compose.n8n` — cleaned up env, removed stale `N8N_WEBHOOK_BASE_URL`
+- `.gitignore` updated to exclude all real `.env*` files, keep `*.example`
+
+#### Documentation
+- **`docs/CONFIGURATION.md`** (438 lines) — complete reference covering: env file structure, all variables, dev/stg/prod setup, n8n configuration, Telegram bot, database, AI providers, troubleshooting
+- **`README.md`** — rewritten: quick start, environments table, full API reference, project structure, scripts table, i18n modules
+- **`n8n-workflows/SETUP.md`** — updated: auto-sync first, manual import as fallback
+- New npm scripts: `n8n:sync`, `setup:full`
+
+### Changed
+- `docker-compose.yml` — n8n section cleaned: removed `$env.*` pattern, added `N8N_DIAGNOSTICS_ENABLED: false`
+- `apps/backend/.env.example` — added `N8N_API_KEY`, `N8N_USER`, `N8N_PASSWORD`
+
+---
+
+## [v19b] — 2026-03-02
+
+### Added — i18n Modularization + Hardcoded String Cleanup
+
+#### i18n refactoring
+- Split `lib/i18n.ts` (299 lines monolith) into 10 focused modules in `lib/i18n/`:
+  `types.ts`, `common.ts`, `auth.ts`, `home.ts`, `dashboard.ts`, `users.ts`, `profile.ts`, `checklist.ts`, `telegram.ts`, `index.ts`
+- `lib/i18n.ts` reduced to 12-line re-export shim — all existing imports still work
+- New keys: `common.save/saving/saved/cancel/confirm`, `nav.profile`, `dashboard.myProfile/profileSub/howToUse/svcXxx`, `checklist.sectionCore/sectionStyle/sectionReminders/errorEmptyTask/errorRequiredFields`, full `profile.*` namespace, full `telegram.*` namespace
+
+#### Hardcoded string elimination
+- `TelegramHelpModal` — all 15+ UI strings → `t.telegram.*`
+- `admin/profile/page.tsx` — all strings → `t.profile.*`
+- `admin/page.tsx` — SERVICES array uses `t.dashboard.svcXxx`, profile card, "¿Cómo se usa?"
+- `checklists/new/page.tsx` — section labels (Core, Estilo, Recordatorios) and validation errors
+- `admin/users/page.tsx` — role labels in `<option>` tags and error messages
+
+#### .env consolidation
+- Root `.env.example` — Docker Compose only (shared vars)
+- `apps/backend/.env.example` — local dev backend (with full comments)
+- `apps/frontend/.env.example` — only `NEXT_PUBLIC_*`
+
+---
+
+## [v19] — 2026-03-02
+
+### Added — n8n Telegram Integration
+
+#### Backend
+- `user.entity.ts` — `telegramChatId` column (nullable varchar)
+- `users.controller.ts` — `GET/PATCH /v1/users/me` (own profile without admin)
+- `users.service.ts` — `updateProfile()` method
+- `webhooks.controller.ts` — `POST /v1/webhooks/telegram-response` parses `complete:itemId` / `postpone:itemId`
+- `checklists.service.ts` — `patchItemByIdOnly()` for Telegram actions without user context
+- `apps/backend/.env.example` — Telegram + n8n vars
+
+#### Frontend
+- `app/admin/profile/page.tsx` — profile page with name + Telegram Chat ID + status badge
+- `components/ui/TelegramHelpModal.tsx` — 5-step modal with bot preview
+- `app/checklists/new/page.tsx` — "¿Cómo obtenerlo?" button on Telegram field
+- `app/api/users/me/route.ts` — proxy GET/PATCH
+- Navbar — "Perfil" link, admin dashboard — "Mi Perfil" card
+
+#### n8n Workflows (`n8n-workflows/`)
+- `01-checklist-reminders.json` — hourly scheduler with Telegram inline buttons
+- `02-telegram-responses.json` — callback handler + `/start` → Chat ID reply
+- `03-weekly-feedback.json` — Sunday 20:00 AI feedback via Telegram
+- `scripts/sync-n8n-workflows.js` — initial version
+- `n8n-workflows/SETUP.md` — setup guide
+
 ## [v17] — 2026-03-01
 
 ### Added — Multi-Provider AI Engine (`packages/ai-core`)
