@@ -59,10 +59,18 @@ for f in apps/backend/.env.example apps/frontend/.env.example; do
   fi
 done
 
-echo -e "\n${YELLOW}  [!!] ACTION REQUIRED: Edit .env and set your keys:${NC}"
-echo -e "      - At least one AI provider key (GEMINI_API_KEY, GROQ_API_KEY, etc.)${NC}"
-echo -e "      - TELEGRAM_BOT_TOKEN + TELEGRAM_BOT_USERNAME (for reminders)${NC}"
-echo -e "      - Change JWT_SECRET, DB_PASSWORD, N8N_PASSWORD before production${NC}"
+echo -e ""
+echo -e "  ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${YELLOW}  ACTION REQUIRED: edit .env before running npm run dev${NC}"
+echo -e "  ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e ""
+echo -e "  Set at least ONE AI provider key (free options):"
+echo -e "    ${BLUE}GEMINI_API_KEY${NC}=your-key  # https://aistudio.google.com/app/apikey"
+echo -e "    ${BLUE}GROQ_API_KEY${NC}=your-key    # https://console.groq.com"
+echo -e ""
+echo -e "  Optional for Telegram reminders:"
+echo -e "    ${BLUE}TELEGRAM_BOT_TOKEN${NC}=your-token"
+echo -e "    ${BLUE}TELEGRAM_BOT_USERNAME${NC}=your-bot-name"
 
 #  5. DOCKER 
 echo -e "\n${YELLOW}>> Starting Docker services (postgres + redis)...${NC}"

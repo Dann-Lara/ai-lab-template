@@ -42,10 +42,10 @@ function loadEnvFile(filePath) {
     const eqIdx = trimmed.indexOf('=');
     if (eqIdx < 0) continue;
     const key = trimmed.slice(0, eqIdx).trim();
-    // Remove surrounding quotes, strip inline comments after  #
+    // Remove surrounding quotes, strip inline comments (# preceded by whitespace)
     let val = trimmed.slice(eqIdx + 1).trim();
     val = val.replace(/^["']|["']$/g, '');
-    val = val.replace(/\s+#.*$/, '');
+    val = val.replace(/(?<=\S)\s+#.*$/, '');  // only strip # if preceded by a non-space char
     if (!(key in process.env)) process.env[key] = val;
   }
 }

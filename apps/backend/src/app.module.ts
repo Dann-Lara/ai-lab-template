@@ -12,7 +12,20 @@ import { ChecklistsModule } from './modules/checklists/checklists.module';
 @Module({
   imports: [
     // Config
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // Resolve relative to this file so it works regardless of CWD
+      // (turbo root, Docker WORKDIR, or direct node invocation).
+      // In Docker, vars are injected directly by Compose — the file may not
+      // exist and that is fine: ignoreEnvFile has no effect when the vars
+      // are already in process.env.
+      envFilePath: [
+        // Primary: package-level .env (local dev without Docker)
+        require('path').resolve(__dirname, '..', '..', '.env'),
+        // Fallback: monorepo root .env (Docker dev or running from root)
+        require('path').resolve(__dirname, '..', '..', '..', '..', '.env'),
+      ],
+    }),
 
     // Database — retries gracefully while Docker starts
     TypeOrmModule.forRootAsync({

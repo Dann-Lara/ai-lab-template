@@ -107,11 +107,17 @@ foreach ($f in @("apps/backend/.env.example", "apps/frontend/.env.example")) {
 }
 
 Write-Host ""
-Write-Warn "ACTION REQUIRED: Edit .env and set your keys:"
-Write-Host "  - At least one AI provider key (GEMINI_API_KEY, GROQ_API_KEY, etc.)"
-Write-Host "  - TELEGRAM_BOT_TOKEN + TELEGRAM_BOT_USERNAME"
-Write-Host "  - Change JWT_SECRET, DB_PASSWORD, N8N_PASSWORD before staging/prod"
 Write-Host ""
+    Write-Host "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow
+    Write-Host "  ACTION REQUIRED: edit .env before running npm run dev" -ForegroundColor Yellow
+    Write-Host "  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "  Set at least ONE AI provider key (free options):"
+    Write-Host "    GEMINI_API_KEY=your-key   # https://aistudio.google.com/app/apikey" -ForegroundColor Cyan
+    Write-Host "    GROQ_API_KEY=your-key     # https://console.groq.com" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  Optional for Telegram reminders:"
+    Write-Host "    TELEGRAM_BOT_TOKEN=your-token" -ForegroundColor Cyan
 
 # -- 5. CHECK OPENAI KEY ------------------------------------------
 $backendEnv = "apps\backend\.env"
