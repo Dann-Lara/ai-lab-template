@@ -70,6 +70,10 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
   // Security
+  app.use((req: any, _res: any, next: () => void) => {
+    console.log('Incoming request headers:', req.headers);
+    next();
+  });
   app.use(helmet());
   app.enableCors({
     origin: process.env['CORS_ORIGINS']?.split(',') ?? ['http://localhost:3000'],

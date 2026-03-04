@@ -326,6 +326,15 @@ export class ChecklistsService {
     return checklist;
   }
 
+  /** Patch checklist by id only (for internal/webhook callers with x-webhook-secret). */
+  async patchChecklistById(id: string, dto: PatchChecklistDto): Promise<ChecklistEntity> {
+    const checklist = await this.checklistRepo.findOneByOrFail({ id });
+    if (dto.status) checklist.status = dto.status;
+    if (dto.title) checklist.title = dto.title;
+    await this.checklistRepo.save(checklist);
+    return checklist;
+  }
+
   // ── Delete checklist ───────────────────────────────────────────────────────
   async remove(userId: string, id: string): Promise<void> {
     const checklist = await this.findOne(userId, id);

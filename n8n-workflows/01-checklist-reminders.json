@@ -3,131 +3,209 @@
   "nodes": [
     {
       "parameters": {
-        "rule": { "interval": [{ "field": "hours", "minutesInterval": 60 }] }
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
       },
       "id": "schedule-trigger",
       "name": "Every Hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [240, 300]
+      "position": [
+        240,
+        304
+      ]
     },
     {
       "parameters": {
-        "url": "={{ $vars.BACKEND_PUBLIC_URL }}/v1/checklists/reminders/due",
+        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists/reminders/due",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "options": { "timeout": 15000 }
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "fetch-due-reminders",
       "name": "Fetch Due Reminders",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300],
-      "credentials": { "httpHeaderAuth": { "id": "1", "name": "Backend Webhook Secret" } }
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": true },
-          "conditions": [
-            {
-              "id": "has-items",
-              "leftValue": "={{ $json.length }}",
-              "rightValue": 0,
-              "operator": { "type": "number", "operation": "gt" }
-            }
-          ]
+      "position": [
+        464,
+        304
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EfBrBbQ88fwJlS4R",
+          "name": "Header Auth account"
         }
-      },
-      "id": "has-reminders",
-      "name": "Has Reminders?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [680, 300]
-    },
-    {
-      "parameters": {
-        "fieldToSplitOut": "=items",
-        "options": {}
-      },
-      "id": "split-reminders",
-      "name": "Split Into Items",
-      "type": "n8n-nodes-base.splitOut",
-      "typeVersion": 1,
-      "position": [900, 220]
+      }
     },
     {
       "parameters": {
         "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
           "conditions": [
             {
               "id": "has-telegram",
               "leftValue": "={{ $json.telegramChatId }}",
               "rightValue": "",
-              "operator": { "type": "string", "operation": "isNotEmpty" }
+              "operator": {
+                "type": "string",
+                "operation": "isNotEmpty"
+              }
+            },
+            {
+              "id": "f67a868b-3228-4484-aa5f-1b4ed5a80993",
+              "leftValue": "={{ $json.telegramChatId }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
             }
-          ]
-        }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
       },
       "id": "has-telegram-id",
       "name": "Has Telegram ID?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1120, 220]
+      "position": [
+        704,
+        304
+      ]
     },
     {
       "parameters": {
-        "chatId": "={{ $json.telegramChatId }}",
-        "text": "📋 *{{ $json.checklistTitle }}*\n\n⏰ *Tarea pendiente:*\n{{ $json.description }}\n\n💡 *Tip:* {{ $json.hack }}",
+        "chatId": "=1389531970",
+        "text": "=📋 {{ $json.checklistTitle }}\n\n{{ $json.description }}\n\n💡 {{ $json.hack }}",
         "additionalFields": {
-          "parse_mode": "Markdown",
-          "reply_markup": {
-            "inline_keyboard": [
-              [
-                { "text": "✅ Completada", "callback_data": "complete:{{ $json.itemId }}" },
-                { "text": "⏳ Aplazar 1 día", "callback_data": "postpone:{{ $json.itemId }}" }
-              ]
-            ]
-          }
+          "parse_mode": "Markdown"
         }
       },
       "id": "send-telegram-reminder",
       "name": "Send Telegram Reminder",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [1340, 160],
-      "credentials": { "telegramApi": { "id": "2", "name": "Telegram Bot" } }
+      "position": [
+        1056,
+        288
+      ],
+      "webhookId": "69f8883e-8597-4884-9bfb-267e7e588ef8",
+      "credentials": {
+        "telegramApi": {
+          "id": "8JyddEiApG6k1J3x",
+          "name": "Telegram account"
+        }
+      }
     },
     {
       "parameters": {
-        "url": "={{ $vars.BACKEND_PUBLIC_URL }}/v1/checklists/{{ $('Split Into Items').item.json.checklistId }}/items/{{ $('Split Into Items').item.json.itemId }}",
         "method": "PATCH",
+        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists/{{ $('Has Telegram ID?').item.json.checklistId }}/items/{{ $('Has Telegram ID?').item.json.itemId }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "bodyParameters": {
-          "parameters": [{ "name": "action", "value": "mark-reminded" }]
+          "parameters": [
+            {
+              "name": "action",
+              "value": "mark-reminded"
+            }
+          ]
         },
-        "options": { "timeout": 10000 }
+        "options": {
+          "timeout": 10000
+        }
       },
       "id": "mark-reminder-sent",
       "name": "Mark Reminder Sent",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1560, 160],
-      "credentials": { "httpHeaderAuth": { "id": "1", "name": "Backend Webhook Secret" } }
+      "position": [
+        1568,
+        160
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EfBrBbQ88fwJlS4R",
+          "name": "Header Auth account"
+        }
+      }
     }
   ],
+  "pinData": {},
   "connections": {
-    "Every Hour": { "main": [[{ "node": "Fetch Due Reminders", "type": "main", "index": 0 }]] },
-    "Fetch Due Reminders": { "main": [[{ "node": "Has Reminders?", "type": "main", "index": 0 }]] },
-    "Has Reminders?": { "main": [[{ "node": "Split Into Items", "type": "main", "index": 0 }], []] },
-    "Split Into Items": { "main": [[{ "node": "Has Telegram ID?", "type": "main", "index": 0 }]] },
-    "Has Telegram ID?": { "main": [[{ "node": "Send Telegram Reminder", "type": "main", "index": 0 }], []] },
-    "Send Telegram Reminder": { "main": [[{ "node": "Mark Reminder Sent", "type": "main", "index": 0 }]] }
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Fetch Due Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Due Reminders": {
+      "main": [
+        [
+          {
+            "node": "Has Telegram ID?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Telegram ID?": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Send Telegram Reminder": {
+      "main": [
+        [
+          {
+            "node": "Mark Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   },
-  "settings": { "executionOrder": "v1", "saveManualExecutions": true, "callerPolicy": "workflowsFromSameOwner" },
-  "staticData": null,
-  "tags": ["checklist", "reminders", "telegram"],
-  "meta": { "description": "Sends Telegram reminders for due checklist tasks every hour. Requires: Backend Webhook Secret (httpHeaderAuth) + Telegram Bot credentials." }
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "a7d94450-1164-47d0-9b0c-96b00d92eccc",
+  "meta": {
+    "instanceId": "a3dc4d10946df3773e07d793b69218d98d8da0756354ef8a04bf87e58d285846"
+  },
+  "id": "U6yrDwohQKPFg0ol",
+  "tags": []
 }

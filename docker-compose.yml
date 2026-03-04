@@ -71,14 +71,16 @@ services:
 
       # ── Auth & Security ───────────────────────────────────────────────────
       N8N_BASIC_AUTH_ACTIVE:        "true"
-      N8N_BASIC_AUTH_USER:          ${N8N_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD:      ${N8N_PASSWORD:-admin123}
+      N8N_BASIC_AUTH_USER:          ${N8N_USER:-dkubdannspc@gmail.com}
+      N8N_BASIC_AUTH_PASSWORD:      ${N8N_PASSWORD:-n8nDann!2025}
       N8N_ENCRYPTION_KEY:           ${N8N_ENCRYPTION_KEY:-change-me-32-chars-minimum-here!}
 
       # ── Webhook URL ───────────────────────────────────────────────────────
       # PUBLIC URL where this n8n instance receives incoming webhooks
       # (Telegram button callbacks, etc.)
       # Dev:  http://localhost:5678/
+      BACKEND_PUBLIC_URL: ${BACKEND_PUBLIC_URL:-http://host.docker.internal:3001}
+      N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET:-change-me}
       # Stg:  https://n8n.staging.yourdomain.com/
       # Prod: https://n8n.yourdomain.com/
       WEBHOOK_URL:                  ${N8N_WEBHOOK_URL:-http://localhost:5678/}
