@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   ChecklistEntity, ChecklistItemEntity, ChecklistFeedbackEntity,
@@ -10,6 +11,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
+    HttpModule,
     TypeOrmModule.forFeature([
       ChecklistEntity, ChecklistItemEntity, ChecklistFeedbackEntity,
     ]),

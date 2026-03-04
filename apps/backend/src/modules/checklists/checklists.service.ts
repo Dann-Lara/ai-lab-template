@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual } from 'typeorm';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { generateText } from '@ai-lab/ai-core';
 
 import {
@@ -195,6 +197,8 @@ export class ChecklistsService {
     private readonly itemRepo: Repository<ChecklistItemEntity>,
     @InjectRepository(ChecklistFeedbackEntity)
     private readonly feedbackRepo: Repository<ChecklistFeedbackEntity>,
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {}
 
   // ── Generate draft ─────────────────────────────────────────────────────────
@@ -410,28 +414,208 @@ export class ChecklistsService {
   // ── Generate feedback ──────────────────────────────────────────────────────
   async generateFeedback(userId: string, checklistId: string): Promise<ChecklistFeedbackEntity> {
     const checklist = await this.findOne(userId, checklistId);
+    return this.buildFeedback(checklist);
+  }
+
+  // ── patchItemByIdOnly — n8n/Telegram, no user ownership check ───────────────
+  async patchItemByIdOnly(
+    itemId: string,
+    action: 'complete' | 'postpone' | 'skip' | 'mark-reminded',
+  ): Promise<{ ok: boolean }> {
+    const item = await this.itemRepo.findOneByOrFail({ id: itemId });
+
+    switch (action) {
+      case 'complete':
+        item.status = 'completed';
+        item.completedAt = new Date();
+        item.reminderSent = false;
+        break;
+      case 'postpone':
+        // Push dueDate +1 day; reset reminderSent so it fires again tomorrow
+        item.dueDate = (() => {
+          const d = item.dueDate ? new Date(item.dueDate) : new Date();
+          d.setDate(d.getDate() + 1);
+          return d;
+        })();
+        item.reminderSent = false;
+        break;
+      case 'skip':
+        item.status = 'skipped';
+        break;
+      case 'mark-reminded':
+        // n8n calls this immediately after sending the Telegram message
+        item.reminderSent = true;
+        break;
+    }
+
+    await this.itemRepo.save(item);
+    return { ok: true };
+  }
+
+  // ── getDueReminders — ONE next item per checklist, in order ──────────────
+  /**
+   * Rule: for each active checklist with a telegramChatId, return the FIRST
+   * item (by `order`) that is still 'pending' — but only if every item before
+   * it is already 'completed' or 'skipped'.
+   *
+   * Example: checklist has 23 tasks, #3 and #6 are completed.
+   *   → Returns item #1 (lowest-order pending)
+   *   → After #1, #2, #3 are done → returns #4
+   *   → After 1-6 done → returns #7
+   *
+   * Only items with reminderSent=false are returned (prevents duplicate sends).
+   */
+  async getDueReminders(): Promise<Array<{
+    itemId: string;
+    checklistId: string;
+    checklistTitle: string;
+    description: string;
+    hack: string;
+    telegramChatId: string;
+    order: number;
+    totalItems: number;
+    completedItems: number;
+  }>> {
+    const checklists = await this.checklistRepo.find({
+      where: { status: 'active' },
+      relations: ['items'],
+    });
+
+    const results: Array<{
+      itemId: string; checklistId: string; checklistTitle: string;
+      description: string; hack: string; telegramChatId: string;
+      order: number; totalItems: number; completedItems: number;
+    }> = [];
+
+    for (const checklist of checklists) {
+      if (!checklist.telegramChatId) continue;
+
+      const sorted = (checklist.items ?? []).sort((a, b) => a.order - b.order);
+      const totalItems = sorted.length;
+      const completedItems = sorted.filter(i => i.status === 'completed').length;
+
+      for (const item of sorted) {
+        if (item.status === 'completed' || item.status === 'skipped') {
+          // This item is done — keep scanning, all predecessors still "done"
+          continue;
+        }
+        // First pending item found — it's unblocked because we only reach here
+        // after iterating past all completed/skipped items in order
+        if (!item.reminderSent) {
+          results.push({
+            itemId: item.id,
+            checklistId: checklist.id,
+            checklistTitle: checklist.title,
+            description: item.description,
+            hack: item.hack ?? '',
+            telegramChatId: checklist.telegramChatId,
+            order: item.order,
+            totalItems,
+            completedItems,
+          });
+        }
+        break; // one item per checklist only
+      }
+    }
+
+    return results;
+  }
+
+  // ── generateFeedbackById — n8n path (no userId) ───────────────────────────
+  async generateFeedbackById(checklistId: string): Promise<ChecklistFeedbackEntity> {
+    const checklist = await this.checklistRepo.findOneOrFail({
+      where: { id: checklistId },
+      relations: ['items'],
+    });
+    return this.buildFeedback(checklist);
+  }
+
+  // ── sendChecklistToTelegram — one message with all tasks ─────────────────
+  async sendChecklistToTelegram(
+    userId: string,
+    checklistId: string,
+  ): Promise<{ sent: boolean; message: string }> {
+    const checklist = await this.findOne(userId, checklistId);
+
+    if (!checklist.telegramChatId) {
+      return {
+        sent: false,
+        message: 'Sin Telegram Chat ID. Edita la checklist y agrega tu Chat ID.',
+      };
+    }
+
+    const items = (checklist.items ?? []).sort((a, b) => a.order - b.order);
+    if (items.length === 0) {
+      return { sent: false, message: 'La checklist no tiene tareas.' };
+    }
+
+    const emoji = (s: string) =>
+      s === 'completed' ? '✅' : s === 'skipped' ? '⏭️' : '⬜';
+    const done = items.filter(i => i.status === 'completed').length;
+
+    const taskLines = items
+      .map((item, i) => `${emoji(item.status ?? 'pending')} *${i + 1}.* ${item.description}`)
+      .join('
+');
+
+    const text =
+      `📋 *${checklist.title}*
+` +
+      `🎯 _${checklist.objective}_
+
+` +
+      taskLines +
+      `
+
+_Progreso: ${done}/${items.length} completadas_`;
+
+    const botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN', '');
+    if (!botToken) {
+      return { sent: false, message: 'TELEGRAM_BOT_TOKEN no configurado en el servidor.' };
+    }
+
+    try {
+      await firstValueFrom(
+        this.httpService.post(
+          `https://api.telegram.org/bot${botToken}/sendMessage`,
+          { chat_id: checklist.telegramChatId, text, parse_mode: 'Markdown' },
+        ),
+      );
+      return { sent: true, message: '✅ Checklist enviada a Telegram' };
+    } catch (err) {
+      this.logger.warn(`Telegram sendMessage failed: ${String(err)}`);
+      return {
+        sent: false,
+        message: 'Error al enviar. Verifica tu Chat ID y que el bot esté activo.',
+      };
+    }
+  }
+
+  // ── buildFeedback — shared logic ──────────────────────────────────────────
+  private async buildFeedback(checklist: ChecklistEntity): Promise<ChecklistFeedbackEntity> {
     const items = checklist.items ?? [];
-
     const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const completedLastWeek = items.filter(
-      (i) => i.status === 'completed' && i.completedAt && new Date(i.completedAt) >= oneWeekAgo,
-    ).length;
+    const prevWeek   = new Date(); prevWeek.setDate(prevWeek.getDate() - 14);
 
-    const prevWeek = new Date(); prevWeek.setDate(prevWeek.getDate() - 14);
+    const completedLastWeek = items.filter(
+      i => i.status === 'completed' && i.completedAt && new Date(i.completedAt) >= oneWeekAgo,
+    ).length;
     const completedPrevWeek = items.filter(
-      (i) => i.status === 'completed' && i.completedAt &&
-        new Date(i.completedAt) >= prevWeek && new Date(i.completedAt) < oneWeekAgo,
+      i => i.status === 'completed' && i.completedAt &&
+           new Date(i.completedAt) >= prevWeek && new Date(i.completedAt) < oneWeekAgo,
     ).length;
 
     const trend = completedPrevWeek === 0 ? 'first week'
-      : completedLastWeek > completedPrevWeek ? `+${completedLastWeek - completedPrevWeek} more than last week`
-      : completedLastWeek < completedPrevWeek ? `-${completedPrevWeek - completedLastWeek} fewer than last week`
+      : completedLastWeek > completedPrevWeek
+        ? `+${completedLastWeek - completedPrevWeek} more than last week`
+      : completedLastWeek < completedPrevWeek
+        ? `-${completedPrevWeek - completedLastWeek} fewer than last week`
       : 'same as last week';
 
     const upcomingTasks = items
-      .filter((i) => i.status === 'pending')
+      .filter(i => i.status === 'pending')
       .slice(0, 3)
-      .map((i) => i.description);
+      .map(i => i.description);
 
     const prompt = buildFeedbackPrompt({
       title: checklist.title, objective: checklist.objective,
@@ -451,56 +635,11 @@ export class ChecklistsService {
     );
 
     const feedback = this.feedbackRepo.create({
-      checklistId, feedbackText: text.trim(), weekNumber, generatedAt: new Date(),
+      checklistId: checklist.id,
+      feedbackText: text.trim(),
+      weekNumber,
+      generatedAt: new Date(),
     });
     return this.feedbackRepo.save(feedback);
-  }
-
-  // ── Patch item by ID only (for Telegram/n8n without user context) ────────────
-  async patchItemByIdOnly(
-    itemId: string,
-    action: 'complete' | 'postpone' | 'skip',
-  ): Promise<void> {
-    const item = await this.itemRepo.findOneByOrFail({ id: itemId });
-
-    if (action === 'complete') {
-      item.status = 'completed';
-      item.completedAt = new Date();
-    } else if (action === 'postpone') {
-      const due = item.dueDate ? new Date(item.dueDate) : new Date();
-      due.setDate(due.getDate() + 1);
-      item.dueDate = due;
-      item.reminderSent = false;
-    } else if (action === 'skip') {
-      item.status = 'skipped';
-    }
-    await this.itemRepo.save(item);
-  }
-
-  // ── Due reminders (for n8n) ────────────────────────────────────────────────
-  async getDueReminders(): Promise<Array<{
-    itemId: string; checklistTitle: string; description: string; hack: string;
-    telegramChatId: string | undefined; checklistId: string;
-  }>> {
-    const now = new Date();
-    const items = await this.itemRepo.find({
-      where: {
-        status: 'pending',
-        reminderSent: false,
-        dueDate: LessThanOrEqual(now),
-      },
-      relations: ['checklist'],
-    });
-
-    return items
-      .filter((i) => i.checklist?.status === 'active')
-      .map((i) => ({
-        itemId: i.id,
-        checklistId: i.checklistId,
-        checklistTitle: i.checklist?.title ?? '',
-        description: i.description,
-        hack: i.hack,
-        telegramChatId: i.checklist?.telegramChatId,
-      }));
   }
 }

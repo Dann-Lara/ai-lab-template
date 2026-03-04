@@ -93,8 +93,8 @@ export class RegenerateDraftDto {
 
 // ── Patch item ───────────────────────────────────────────────────────────────
 export class PatchItemDto {
-  @IsEnum(['complete', 'postpone', 'skip'])
-  action!: 'complete' | 'postpone' | 'skip';
+  @IsEnum(['complete', 'postpone', 'skip', 'mark-reminded'])
+  action!: 'complete' | 'postpone' | 'skip' | 'mark-reminded';
 
   @IsOptional() @IsDateString() dueDate?: string;
   @IsOptional() @IsEnum(['pending', 'completed', 'skipped']) status?: TaskStatus;

@@ -1,0 +1,59 @@
+# Cursor Rules — AI Lab Template
+
+## Architecture
+- **Backend**: NestJS 10 + TypeORM + PostgreSQL — `apps/backend/src/`
+- **Frontend**: Next.js 14 App Router + TypeScript strict — `apps/frontend/`
+- **AI**: shared package at `packages/ai-core/` — use `generateText()` from there
+- **Automations**: n8n workflows in `n8n-workflows/*.json`
+- Docs & rules: `docs/AGENTS.md` — read it for full conventions
+
+## Before every edit
+1. Read the full target file first
+2. Check `docs/AGENTS.md` for relevant conventions
+3. Never edit more than one file per logical change unless necessary
+
+## Code style — Backend (NestJS/TypeScript)
+- Guards: `JwtAuthGuard` for JWT, `JwtOrWebhookSecretGuard` for n8n endpoints
+- n8n endpoints always check `req.webhookAuth` flag to skip user ownership
+- DTOs require `class-validator` decorators on every field
+- Services inject dependencies via constructor, never static methods
+- Always use `this.logger.warn()` for external API errors, never `console.error`
+- Wrap ALL external HTTP calls (Telegram, AI providers) in try/catch
+
+## Code style — Frontend (Next.js)
+- All API calls go via `lib/checklists.ts` — never raw `fetch()` in components
+- Async handlers: `async function handleX() {}` called as `() => void handleX()`
+- State: one `useState` per concept — no mega-state objects
+- Pages > 200 lines: extract step/section components to `components/*/` subfolders
+- No `localStorage` direct access — use `useAuth` hook
+
+## n8n workflows
+- HTTP credential ID: `EfBrBbQ88fwJlS4R` ("Header Auth account")
+- Telegram credential ID: `8JyddEiApG6k1J3x` ("Telegram account")
+- Always use `$env.BACKEND_PUBLIC_URL` — never `$vars.`
+- Callback data format: `"action:checklistId:itemId"`
+
+## What NOT to do
+- Never add `any` types
+- Never hardcode secrets or API keys
+- Never use `$vars.` in n8n (use `$env.`)
+- Never bypass TypeScript with `@ts-ignore`
+- Never commit `.env` files
+- Never write inline `<style>` — use Tailwind classes only
+- Never put business logic in controllers — only in services
+
+## File size limits
+- Pages: max 300 lines → split into components
+- Components: max 250 lines → split into sub-components
+- Services: max 500 lines → split into focused services
+
+## Env vars
+- New vars → add to `.env.example` + `docs/DEPLOYMENT.md`
+- Backend: `this.configService.get<string>('VAR', 'default')`
+- Frontend public: `NEXT_PUBLIC_*` prefix
+- Never log actual values — log `!!process.env.VAR` only
+
+## Commit messages
+`type(scope): description`  
+Types: feat, fix, refactor, docs, chore, test  
+Example: `fix(n8n): align credential IDs in workflow 02`

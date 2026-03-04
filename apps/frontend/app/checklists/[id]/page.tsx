@@ -42,6 +42,8 @@ export default function ChecklistDetailPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError]           = useState('');
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramMsg, setTelegramMsg]         = useState('');
   const [deleteModal, setDeleteModal]         = useState(false);
   const [actionLoading, setActionLoading]     = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'tasks' | 'dashboard'>('tasks');
@@ -83,6 +85,18 @@ export default function ChecklistDetailPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.error);
     } finally { setFeedbackLoading(false); }
+  }
+
+  async function handleSendToTelegram() {
+    if (!checklist) return;
+    setTelegramLoading(true);
+    setTelegramMsg('');
+    try {
+      const res = await checklistsApi.sendToTelegram(checklist.id);
+      setTelegramMsg(res.message);
+    } catch (e) {
+      setTelegramMsg(e instanceof Error ? e.message : 'Error al enviar');
+    } finally { setTelegramLoading(false); }
   }
 
   async function handleStatusToggle() {

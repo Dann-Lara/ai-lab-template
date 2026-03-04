@@ -90,10 +90,29 @@
     },
     {
       "parameters": {
-        "chatId": "=1389531970",
-        "text": "=📋 {{ $json.checklistTitle }}\n\n{{ $json.description }}\n\n💡 {{ $json.hack }}",
+        "chatId": "={{ $json.telegramChatId }}",
+        "text": "=📋 *{{ $json.checklistTitle }}*\n\n⬜ Tarea {{ $json.order + 1 }}/{{ $json.totalItems }}\n\n{{ $json.description }}\n\n💡 _{{ $json.hack }}_\n\n_Progreso: {{ $json.completedItems }}/{{ $json.totalItems }} completadas_",
         "additionalFields": {
-          "parse_mode": "Markdown"
+          "parse_mode": "Markdown",
+          "replyMarkup": "inlineKeyboard",
+          "inlineKeyboard": {
+            "rows": [
+              {
+                "row": {
+                  "buttons": [
+                    {
+                      "text": "✅ Completada",
+                      "callbackData": "={{ 'complete:' + $json.checklistId + ':' + $json.itemId }}"
+                    },
+                    {
+                      "text": "⏳ Posponer",
+                      "callbackData": "={{ 'postpone:' + $json.checklistId + ':' + $json.itemId }}"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
         }
       },
       "id": "send-telegram-reminder",

@@ -1,17 +1,6 @@
 import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Headers,
-  HttpCode,
-  HttpStatus,
-  Param,
-  Patch,
-  Post,
-  Req,
-  UnauthorizedException,
-  UseGuards,
+  Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus,
+  Param, Patch, Post, Req, UnauthorizedException, UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -20,14 +9,10 @@ import { Throttle } from '@nestjs/throttler';
 import { CurrentUser, type JwtUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtOrWebhookSecretGuard } from '../auth/guards/jwt-or-webhook.guard';
-
 import { ChecklistsService } from './checklists.service';
 import {
-  CreateChecklistParamsDto,
-  ConfirmChecklistDto,
-  RegenerateDraftDto,
-  PatchItemDto,
-  PatchChecklistDto,
+  CreateChecklistParamsDto, ConfirmChecklistDto, RegenerateDraftDto,
+  PatchItemDto, PatchChecklistDto,
 } from './dto/checklist.dto';
 
 @ApiTags('Checklists')
@@ -39,16 +24,13 @@ export class ChecklistsController {
     private readonly configService: ConfigService,
   ) {}
 
-  // ── AI generation (rate-limited: 10/min per endpoint) ─────────────────────
+  // ── AI generation ──────────────────────────────────────────────────────────
   @Post('generate-draft')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiOperation({ summary: 'Generate AI draft tasks from questionnaire params' })
   @UseGuards(JwtAuthGuard)
-  generateDraft(
-    @CurrentUser() user: JwtUser,
-    @Body() dto: CreateChecklistParamsDto,
-  ) {
+  generateDraft(@CurrentUser() user: JwtUser, @Body() dto: CreateChecklistParamsDto) {
     return this.svc.generateDraft(user.userId, dto);
   }
 
@@ -68,16 +50,16 @@ export class ChecklistsController {
     return this.svc.confirm(user.userId, dto);
   }
 
-  // ── n8n reminder endpoint (uses API key from header, not JWT) ─────────────
+  // ── n8n internal (webhook secret — no JWT required) ───────────────────────
+
+  /**
+   * Returns ONE next pending item per active checklist with telegramChatId.
+   * Item N is only returned once items 0..N-1 are all completed or skipped.
+   */
   @Get('reminders/due')
-  @ApiOperation({ summary: 'Due reminders for n8n (internal)' })
-  getDueReminders(
-    @Headers('x-webhook-secret') secret: string,
-  ) {
-    const expected = this.configService.get<string>('N8N_WEBHOOK_SECRET', '');
-    if (!secret || secret !== expected) {
-      throw new UnauthorizedException('Invalid webhook secret');
-    }
+  @ApiOperation({ summary: 'Next ordered reminder per checklist — for n8n' })
+  getDueReminders(@Headers('x-webhook-secret') secret: string) {
+    this.assertWebhookSecret(secret);
     return this.svc.getDueReminders();
   }
 
@@ -104,9 +86,7 @@ export class ChecklistsController {
     @Param('id') id: string,
     @Body() dto: PatchChecklistDto,
   ) {
-    if (req.webhookAuth) {
-      return this.svc.patchChecklistById(id, dto);
-    }
+    if (req.webhookAuth) return this.svc.patchChecklistById(id, dto);
     return this.svc.patchChecklist(req.user!.userId, id, dto);
   }
 
@@ -125,24 +105,61 @@ export class ChecklistsController {
     return this.svc.getProgress(user.userId, id);
   }
 
+  /**
+   * JWT (from UI) OR webhook-secret (n8n weekly workflow — no JWT).
+   */
   @Post(':id/feedback')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @ApiOperation({ summary: 'Generate AI weekly feedback' })
-  @UseGuards(JwtAuthGuard)
-  generateFeedback(@CurrentUser() user: JwtUser, @Param('id') id: string) {
-    return this.svc.generateFeedback(user.userId, id);
+  @ApiOperation({ summary: 'Generate AI weekly feedback (JWT or n8n)' })
+  @UseGuards(JwtOrWebhookSecretGuard)
+  generateFeedback(
+    @Req() req: { user?: JwtUser; webhookAuth?: boolean },
+    @Param('id') id: string,
+  ) {
+    if (req.webhookAuth) return this.svc.generateFeedbackById(id);
+    return this.svc.generateFeedback(req.user!.userId, id);
   }
 
+  /**
+   * PATCH /v1/checklists/:id/items/:itemId
+   * JWT  → complete | postpone | skip   (from web UI)
+   * webhook-secret → mark-reminded      (n8n after Telegram send)
+   *                  complete | postpone (n8n Telegram button)
+   */
   @Patch(':id/items/:itemId')
-  @ApiOperation({ summary: 'Complete / postpone / skip a task' })
-  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'complete / postpone / skip / mark-reminded' })
+  @UseGuards(JwtOrWebhookSecretGuard)
   patchItem(
-    @CurrentUser() user: JwtUser,
+    @Req() req: { user?: JwtUser; webhookAuth?: boolean },
     @Param('id') id: string,
     @Param('itemId') itemId: string,
     @Body() dto: PatchItemDto,
   ) {
-    return this.svc.patchItem(user.userId, id, itemId, dto);
+    if (req.webhookAuth) {
+      return this.svc.patchItemByIdOnly(
+        itemId,
+        dto.action as 'complete' | 'postpone' | 'skip' | 'mark-reminded',
+      );
+    }
+    return this.svc.patchItem(req.user!.userId, id, itemId, dto);
+  }
+
+  /**
+   * POST /v1/checklists/:id/send-to-telegram
+   * Sends full checklist as one Telegram message. Triggered from UI button.
+   */
+  @Post(':id/send-to-telegram')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send full checklist to Telegram (one message)' })
+  @UseGuards(JwtAuthGuard)
+  sendToTelegram(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return this.svc.sendChecklistToTelegram(user.userId, id);
+  }
+
+  // ── Private ───────────────────────────────────────────────────────────────
+  private assertWebhookSecret(secret: string): void {
+    const expected = this.configService.get<string>('N8N_WEBHOOK_SECRET', '');
+    if (!secret || secret !== expected) throw new UnauthorizedException('Invalid webhook secret');
   }
 }

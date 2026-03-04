@@ -127,6 +127,11 @@ export const checklistsApi = {
     apiFetch<{ feedbackText: string; generatedAt: string }>(
       `/api/checklists/${id}/feedback`, { method: 'POST', body: '{}' }
     ),
+
+  sendToTelegram: (id: string) =>
+    apiFetch<{ sent: boolean; message: string }>(
+      `/api/checklists/${id}/send-to-telegram`, { method: 'POST', body: '{}' }
+    ),
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
