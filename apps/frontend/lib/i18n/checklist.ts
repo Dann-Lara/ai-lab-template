@@ -66,6 +66,25 @@ export const checklistES = {
     globalDashboard: 'Dashboard Global',
     aiToolsTitle: 'Herramientas IA',
     aiToolsDesc: 'Genera y resume texto con inteligencia artificial',
+
+    // Telegram send
+    sendToTelegram: 'Enviar a Telegram',
+    sendToTelegramTitle: 'Enviar checklist a Telegram',
+    sendToTelegramDesc: 'Envía esta checklist con todas sus tareas a tu Telegram',
+    telegramSending: 'Enviando...',
+    telegramNoId: 'Esta checklist no tiene Telegram Chat ID configurado',
+    telegramSuccess: '¡Enviado a Telegram!',
+    telegramError: 'Error al enviar a Telegram',
+
+    // Misc hardcoded strings
+    tabAll: 'Todos',
+    headerSubtitle: 'AI Lab — Productividad',
+    tasksCount: 'tareas',
+    allCompleted: '¡Todo completado!',
+    minsPerDay: 'min/día',
+    weekLabel: 'Semana',
+    cancel: 'Cancelar',
+    save: 'Guardar',
   },
 } as const;
 
@@ -129,6 +148,25 @@ export const checklistEN = {
     globalDashboard: 'Global Dashboard',
     aiToolsTitle: 'AI Tools',
     aiToolsDesc: 'Generate and summarize text with artificial intelligence',
+
+    // Telegram send
+    sendToTelegram: 'Send to Telegram',
+    sendToTelegramTitle: 'Send checklist to Telegram',
+    sendToTelegramDesc: 'Send this checklist with all its tasks to your Telegram',
+    telegramSending: 'Sending...',
+    telegramNoId: 'This checklist has no Telegram Chat ID configured',
+    telegramSuccess: 'Sent to Telegram!',
+    telegramError: 'Error sending to Telegram',
+
+    // Misc hardcoded strings
+    tabAll: 'All',
+    headerSubtitle: 'AI Lab — Productivity',
+    tasksCount: 'tasks',
+    allCompleted: 'All done!',
+    minsPerDay: 'min/day',
+    weekLabel: 'Week',
+    cancel: 'Cancel',
+    save: 'Save',
   },
 } as const;
 

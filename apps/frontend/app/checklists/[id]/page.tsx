@@ -95,7 +95,7 @@ export default function ChecklistDetailPage() {
       const res = await checklistsApi.sendToTelegram(checklist.id);
       setTelegramMsg(res.message);
     } catch (e) {
-      setTelegramMsg(e instanceof Error ? e.message : 'Error al enviar');
+      setTelegramMsg(e instanceof Error ? e.message : t.checklist.telegramError);
     } finally { setTelegramLoading(false); }
   }
 
@@ -176,7 +176,7 @@ export default function ChecklistDetailPage() {
                   {new Date(checklist.startDate).toLocaleDateString()} → {new Date(checklist.endDate).toLocaleDateString()}
                 </span>
                 <span className="font-mono text-[9px] text-slate-400">
-                  {checklist.dailyTimeAvailable} {t.checklist.mins}/día
+                  {checklist.dailyTimeAvailable} {t.checklist.minsPerDay}
                 </span>
               </div>
             </div>
@@ -265,8 +265,8 @@ export default function ChecklistDetailPage() {
                     <path d="M4 14l6 6 14-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
-                <p className="headline text-3xl text-slate-900 dark:text-white mb-2">
-                  ¡Todo completado!
+                <p className="headline text-3xl text-slate-900 dark:text-white mb-2" suppressHydrationWarning>
+                  {t.checklist.allCompleted}
                 </p>
               </div>
             )}
@@ -350,7 +350,7 @@ export default function ChecklistDetailPage() {
                   </p>
                   <p className="font-mono text-[9px] text-slate-400">
                     {new Date(latestFeedback.generatedAt).toLocaleDateString()}
-                    {latestFeedback.weekNumber ? ` · Semana ${latestFeedback.weekNumber}` : ''}
+                    {latestFeedback.weekNumber ? ` · ${t.checklist.weekLabel} ${latestFeedback.weekNumber}` : ''}
                   </p>
                 </div>
               ) : (
@@ -380,7 +380,7 @@ export default function ChecklistDetailPage() {
                 {t.checklist.deleteChecklist}
               </button>
               <button onClick={() => setDeleteModal(false)} className="btn-ghost flex-1" suppressHydrationWarning>
-                {t.checklist.cancel ?? 'Cancelar'}
+                {t.checklist.cancel}
               </button>
             </div>
           </div>

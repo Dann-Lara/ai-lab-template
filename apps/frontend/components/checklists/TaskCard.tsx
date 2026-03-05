@@ -189,11 +189,11 @@ export function TaskCard({
             </div>
             <div className="flex gap-2">
               <button onClick={saveEdit} className="btn-primary text-[10px] py-1.5 px-4 flex-1 flex items-center justify-center gap-1.5">
-                <IconCheck size={12} /> Guardar
+                <IconCheck size={12} /> {t.checklist.save}
               </button>
               <button onClick={() => { setDraft(task); setEditing(false); }}
                 className="btn-ghost text-[10px] py-1.5 px-4 flex items-center justify-center gap-1.5">
-                <IconX size={11} /> Cancelar
+                <IconX size={11} /> {t.checklist.cancel}
               </button>
             </div>
           </div>

@@ -168,7 +168,28 @@ docs: add deployment guide for staging/prod
 
 ---
 
-## 10. Testing & Verification
+## 11. Dark / Light Mode Compliance
+
+Every new design or UI component **must** support both color modes:
+- Use Tailwind's `dark:` variants for all colors — never hardcode a single-mode color.
+- Background: `bg-white dark:bg-slate-900` / `bg-slate-50 dark:bg-slate-950`
+- Text: `text-slate-900 dark:text-white` / `text-slate-600 dark:text-slate-300`
+- Borders: `border-slate-200 dark:border-slate-800`
+- Never use CSS `color`, `background-color`, or inline styles for theme-sensitive values.
+- Test visually in both modes before marking a UI task done.
+
+---
+
+## 12. i18n for All User-Facing Text
+
+**Every** string shown to the user must use the i18n system — no hardcoded text in components:
+- All labels, messages, errors, placeholders, and button text go through `t.*` keys.
+- Add new keys to **both** `checklistES` / `checklistEN` (or the relevant file) at the same time.
+- Never leave a fallback like `t.foo ?? 'Texto en español'` — add the key instead.
+- Error messages thrown from API calls must be translatable (use `t.common.error` or a specific key).
+- Files: `apps/frontend/lib/i18n/*.ts` — one file per domain (`checklist`, `common`, `auth`, etc.).
+- After adding keys, verify the EN translation is also filled in (no untranslated EN strings).
+
 
 Before marking any task done:
 1. TypeScript compiles without errors: `cd apps/backend && npx tsc --noEmit`

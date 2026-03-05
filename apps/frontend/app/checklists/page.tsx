@@ -23,9 +23,23 @@ const DIFF_LABEL: Record<string, string> = {
 function ChecklistCard({ checklist, onDelete }: { checklist: Checklist; onDelete: () => void }) {
   const { t } = useI18n();
   const [confirmDel, setConfirmDel] = useState(false);
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramMsg, setTelegramMsg] = useState('');
   const completed = checklist.items.filter((i) => i.status === 'completed').length;
   const total = checklist.items.length;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  async function handleSendToTelegram() {
+    if (!checklist.telegramChatId) { setTelegramMsg(t.checklist.telegramNoId); return; }
+    setTelegramLoading(true);
+    setTelegramMsg('');
+    try {
+      const res = await checklistsApi.sendToTelegram(checklist.id);
+      setTelegramMsg(res.message || t.checklist.telegramSuccess);
+    } catch (e) {
+      setTelegramMsg(e instanceof Error ? e.message : t.checklist.telegramError);
+    } finally { setTelegramLoading(false); }
+  }
 
   return (
     <div className="card p-5 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-200">
@@ -52,7 +66,7 @@ function ChecklistCard({ checklist, onDelete }: { checklist: Checklist; onDelete
       {/* Progress bar */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="font-mono text-[9px] text-slate-400">{completed}/{total} tareas</span>
+          <span className="font-mono text-[9px] text-slate-400">{completed}/{total} {t.checklist.tasksCount}</span>
           <span className="font-mono text-[9px] font-bold text-sky-600 dark:text-sky-400">{pct}%</span>
         </div>
         <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
@@ -60,6 +74,17 @@ function ChecklistCard({ checklist, onDelete }: { checklist: Checklist; onDelete
                style={{ width: `${pct}%` }} />
         </div>
       </div>
+
+      {/* Telegram feedback */}
+      {telegramMsg && (
+        <div className={`mt-2 font-mono text-[9px] px-2 py-1.5 rounded border
+          ${telegramMsg === t.checklist.telegramNoId || telegramMsg === t.checklist.telegramError
+            ? 'text-red-600 dark:text-red-400 border-red-200 dark:border-red-400/30 bg-red-50 dark:bg-red-400/5'
+            : 'text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-400/30 bg-emerald-50 dark:bg-emerald-400/5'
+          }`}>
+          {telegramMsg}
+        </div>
+      )}
 
       {/* Dates + actions */}
       <div className="flex items-center justify-between gap-3">
@@ -69,6 +94,28 @@ function ChecklistCard({ checklist, onDelete }: { checklist: Checklist; onDelete
         <div className="flex items-center gap-1.5">
           {!confirmDel ? (
             <>
+              {checklist.telegramChatId && (
+                <button onClick={() => void handleSendToTelegram()} disabled={telegramLoading}
+                  title={t.checklist.sendToTelegramTitle}
+                  className="font-mono text-[9px] text-slate-400 hover:text-sky-500 dark:hover:text-sky-400
+                             transition-colors px-2 py-1 rounded border border-transparent
+                             hover:border-sky-300 dark:hover:border-sky-400/30
+                             hover:bg-sky-50 dark:hover:bg-sky-400/10 flex items-center gap-1
+                             disabled:opacity-50 disabled:cursor-not-allowed"
+                  suppressHydrationWarning>
+                  {telegramLoading ? (
+                    <svg className="animate-spin" width="10" height="10" viewBox="0 0 16 16" fill="none">
+                      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeOpacity="0.2"/>
+                      <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                      <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                  {t.checklist.sendToTelegram}
+                </button>
+              )}
               <Link href={`/checklists/${checklist.id}`}
                 className="font-mono text-[9px] text-slate-400 hover:text-sky-500 dark:hover:text-sky-400
                            transition-colors px-2 py-1 rounded border border-transparent
@@ -91,8 +138,8 @@ function ChecklistCard({ checklist, onDelete }: { checklist: Checklist; onDelete
             <>
               <button onClick={onDelete}
                 className="font-mono text-[9px] text-red-600 dark:text-red-400 px-2 py-1 rounded
-                           border border-red-200 dark:border-red-400/30 bg-red-50 dark:bg-red-400/5">
-                Confirmar
+                           border border-red-200 dark:border-red-400/30 bg-red-50 dark:bg-red-400/5" suppressHydrationWarning>
+                {t.common.confirm}
               </button>
               <button onClick={() => setConfirmDel(false)}
                 className="font-mono text-[9px] text-slate-400 px-2 py-1 rounded
@@ -274,8 +321,8 @@ export default function ChecklistsListPage() {
         <div className="py-10 border-b border-slate-200 dark:border-slate-800/60 mb-10
                         flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <p className="font-mono text-[10px] text-slate-400 uppercase tracking-[0.4em] mb-3">
-              AI Lab — Productividad
+            <p className="font-mono text-[10px] text-slate-400 uppercase tracking-[0.4em] mb-3" suppressHydrationWarning>
+              {t.checklist.headerSubtitle}
             </p>
             <h1 className="headline text-5xl md:text-7xl text-slate-900 dark:text-white" suppressHydrationWarning>
               {t.checklist.myChecklists}
@@ -299,7 +346,7 @@ export default function ChecklistsListPage() {
         {/* Tabs */}
         <div className="flex gap-1 mb-8 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
           {([
-            { key: 'all',       label: 'Todos' },
+            { key: 'all',       label: t.checklist.tabAll },
             { key: 'active',    label: t.checklist.active },
             { key: 'paused',    label: t.checklist.paused },
             { key: 'completed', label: t.checklist.completed },
