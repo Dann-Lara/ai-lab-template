@@ -16,6 +16,7 @@ import type {
   CreateChecklistParamsDto, ChecklistItemDraftDto,
   ConfirmChecklistDto, RegenerateDraftDto, PatchItemDto, PatchChecklistDto,
 } from './dto/checklist.dto';
+import { ConfigService } from '@nestjs/config';
 
 // ── Simple in-memory rate limiter per user (resets on restart) ──────────────
 const generationCounts = new Map<string, { count: number; resetAt: number }>();
@@ -555,19 +556,13 @@ export class ChecklistsService {
 
     const taskLines = items
       .map((item, i) => `${emoji(item.status ?? 'pending')} *${i + 1}.* ${item.description}`)
-      .join('
-');
+      .join('\n');
 
     const text =
-      `📋 *${checklist.title}*
-` +
-      `🎯 _${checklist.objective}_
-
-` +
+      `📋 *${checklist.title}*\n` +
+      `🎯 _${checklist.objective}_\n\n` +
       taskLines +
-      `
-
-_Progreso: ${done}/${items.length} completadas_`;
+      `\n\n_Progreso: ${done}/${items.length} completadas_`;
 
     const botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN', '');
     if (!botToken) {
@@ -607,9 +602,9 @@ _Progreso: ${done}/${items.length} completadas_`;
 
     const trend = completedPrevWeek === 0 ? 'first week'
       : completedLastWeek > completedPrevWeek
-        ? `+${completedLastWeek - completedPrevWeek} more than last week`
+      ? `+${completedLastWeek - completedPrevWeek} more than last week`
       : completedLastWeek < completedPrevWeek
-        ? `-${completedPrevWeek - completedLastWeek} fewer than last week`
+      ? `-${completedPrevWeek - completedLastWeek} fewer than last week`
       : 'same as last week';
 
     const upcomingTasks = items
