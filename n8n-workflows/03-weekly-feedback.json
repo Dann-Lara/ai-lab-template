@@ -23,7 +23,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists",
+        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists/active-with-telegram",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {
@@ -31,7 +31,7 @@
         }
       },
       "id": "get-all-checklists",
-      "name": "Get Active Checklists",
+      "name": "Get Active Checklists (n8n)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -44,14 +44,14 @@
           "name": "Header Auth account"
         }
       },
-      "notes": "Uses a superadmin token. Configure httpHeaderAuth with Authorization: Bearer <superadmin_token>"
+      "notes": "Uses x-webhook-secret. Returns only active checklists with telegramChatId."
     },
     {
       "parameters": {
-        "jsCode": "// Filter only active checklists with a telegramChatId\nconst items = Array.isArray($input.item.json) ? $input.item.json : [];\nreturn items\n  .filter(c => c.status === 'active' && c.telegramChatId)\n  .map(c => ({ json: c }));"
+        "jsCode": "// Input is already filtered by the backend endpoint\n// Just ensure items are properly mapped\nconst items = Array.isArray($input.item.json) ? $input.item.json : [$input.item.json];\nreturn items.filter(c => c && c.id && c.telegramChatId).map(c => ({ json: c }));"
       },
       "id": "filter-active",
-      "name": "Filter Active + Has Telegram",
+      "name": "Validate Items",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -66,8 +66,11 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {
-          "timeout": 30000
-        }
+          "timeout": 45000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}"
       },
       "id": "generate-feedback",
       "name": "Generate AI Feedback",
@@ -87,7 +90,7 @@
     {
       "parameters": {
         "chatId": "={{ $('Filter Active + Has Telegram').item.json.telegramChatId }}",
-        "text": "🤖 *Feedback semanal — {{ $('Filter Active + Has Telegram').item.json.title }}*\n\n{{ $json.feedbackText }}\n\n_Generado por AI Lab · Semana {{ $json.weekNumber }}_",
+        "text": "🤖 *Feedback semanal — {{ $('Validate Items').item.json.title }}*\n\n{{ $json.feedbackText }}\n\n_Generado por AI Lab · Semana {{ $json.weekNumber }}_",
         "additionalFields": {
           "parse_mode": "Markdown"
         }
@@ -139,25 +142,14 @@
       "main": [
         [
           {
-            "node": "Get Active Checklists",
+            "node": "Get Active Checklists (n8n)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get Active Checklists": {
-      "main": [
-        [
-          {
-            "node": "Filter Active + Has Telegram",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Filter Active + Has Telegram": {
+    "Validate Items": {
       "main": [
         [
           {
@@ -184,6 +176,17 @@
         [
           {
             "node": "Notify Backend (log)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Checklists (n8n)": {
+      "main": [
+        [
+          {
+            "node": "Validate Items",
             "type": "main",
             "index": 0
           }

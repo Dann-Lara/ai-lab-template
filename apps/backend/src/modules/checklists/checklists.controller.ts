@@ -50,6 +50,17 @@ export class ChecklistsController {
     return this.svc.confirm(user.userId, dto);
   }
 
+  /**
+   * Returns all active checklists that have a telegramChatId — for n8n weekly feedback.
+   * Secured by x-webhook-secret (no JWT required).
+   */
+  @Get('active-with-telegram')
+  @ApiOperation({ summary: 'Active checklists with Telegram ID — for n8n' })
+  getActiveWithTelegram(@Headers('x-webhook-secret') secret: string) {
+    this.assertWebhookSecret(secret);
+    return this.svc.getActiveWithTelegram();
+  }
+
   // ── n8n internal (webhook secret — no JWT required) ───────────────────────
 
   /**

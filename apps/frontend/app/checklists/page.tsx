@@ -97,23 +97,22 @@ function ChecklistCard({ checklist, onDelete }: { checklist: Checklist; onDelete
               {checklist.telegramChatId && (
                 <button onClick={() => void handleSendToTelegram()} disabled={telegramLoading}
                   title={t.checklist.sendToTelegramTitle}
-                  className="font-mono text-[9px] text-slate-400 hover:text-sky-500 dark:hover:text-sky-400
-                             transition-colors px-2 py-1 rounded border border-transparent
+                  className="w-7 h-7 rounded border border-transparent
+                             text-slate-400 hover:text-sky-500 dark:hover:text-sky-400
                              hover:border-sky-300 dark:hover:border-sky-400/30
-                             hover:bg-sky-50 dark:hover:bg-sky-400/10 flex items-center gap-1
-                             disabled:opacity-50 disabled:cursor-not-allowed"
-                  suppressHydrationWarning>
+                             hover:bg-sky-50 dark:hover:bg-sky-400/10
+                             flex items-center justify-center transition-all
+                             disabled:opacity-50 disabled:cursor-not-allowed">
                   {telegramLoading ? (
-                    <svg className="animate-spin" width="10" height="10" viewBox="0 0 16 16" fill="none">
+                    <svg className="animate-spin" width="11" height="11" viewBox="0 0 16 16" fill="none">
                       <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2" strokeOpacity="0.2"/>
                       <path d="M14 8a6 6 0 0 0-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                     </svg>
                   ) : (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                       <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   )}
-                  {t.checklist.sendToTelegram}
                 </button>
               )}
               <Link href={`/checklists/${checklist.id}`}

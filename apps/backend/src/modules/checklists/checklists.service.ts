@@ -175,16 +175,22 @@ function buildFeedbackPrompt(data: {
   title: string; objective: string; startDate: string; endDate: string;
   completedLastWeek: number; totalTasks: number; trend: string;
   upcomingTasks: string[]; language: string;
-}): string {
-  return `You are a motivational productivity coach. Write a short (max 200 words), warm, 
-encouraging comment in ${data.language} based on:
-Checklist: "${data.title}" — ${data.objective}
-Period: ${data.startDate} to ${data.endDate}
-Completed last week: ${data.completedLastWeek}/${data.totalTasks}
-Trend: ${data.trend}
-Upcoming: ${data.upcomingTasks.join(', ')}
-
-Respond with plain text only. No markdown. Be warm, specific and motivating.`;
+}): { systemMessage: string; prompt: string } {
+  const lang = data.language === 'es' ? 'Spanish' : data.language === 'en' ? 'English' : data.language;
+  const upcoming = data.upcomingTasks.length > 0 ? data.upcomingTasks.join(', ') : 'none';
+  return {
+    systemMessage:
+      `You are a concise motivational productivity coach. Always respond in ${lang}. ` +
+      'Output plain text only — no markdown, no bullet points, no lists. Max 150 words.',
+    prompt:
+      `Checklist: "${data.title}"\n` +
+      `Goal: ${data.objective}\n` +
+      `Period: ${data.startDate} → ${data.endDate}\n` +
+      `Completed this week: ${data.completedLastWeek} of ${data.totalTasks} tasks. Trend: ${data.trend}.\n` +
+      `Next up: ${upcoming}\n\n` +
+      `Write a warm, specific, encouraging weekly feedback. Acknowledge progress, name the trend, ` +
+      `and give one concrete tip for the coming week. Plain text, ${lang} only.`,
+  };
 }
 
 @Injectable()
@@ -522,6 +528,17 @@ export class ChecklistsService {
     return results;
   }
 
+  // ── getActiveWithTelegram — n8n weekly feedback list ─────────────────────
+  async getActiveWithTelegram(): Promise<Array<{ id: string; title: string; telegramChatId: string; language: string }>> {
+    const checklists = await this.checklistRepo.find({
+      where: { status: 'active' },
+      select: ['id', 'title', 'telegramChatId', 'language'],
+    });
+    return checklists
+      .filter((c) => !!c.telegramChatId)
+      .map((c) => ({ id: c.id, title: c.title, telegramChatId: c.telegramChatId!, language: c.language }));
+  }
+
   // ── generateFeedbackById — n8n path (no userId) ───────────────────────────
   async generateFeedbackById(checklistId: string): Promise<ChecklistFeedbackEntity> {
     const checklist = await this.checklistRepo.findOneOrFail({
@@ -612,7 +629,7 @@ export class ChecklistsService {
       .slice(0, 3)
       .map(i => i.description);
 
-    const prompt = buildFeedbackPrompt({
+    const { systemMessage, prompt } = buildFeedbackPrompt({
       title: checklist.title, objective: checklist.objective,
       startDate: checklist.startDate, endDate: checklist.endDate,
       completedLastWeek, totalTasks: items.length, trend,
@@ -620,7 +637,7 @@ export class ChecklistsService {
     });
 
     const { text } = await withRetry(
-      () => generateText({ prompt, maxTokens: 400, temperature: 0.8 }),
+      () => generateText({ systemMessage, prompt, maxTokens: 250, temperature: 0.65 }),
       2, 1500,
     );
 
