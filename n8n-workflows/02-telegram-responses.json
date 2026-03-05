@@ -52,7 +52,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const cb = $input.item.json.callback_query;\nconst parts = cb.data.split(':'); // 'action:checklistId:itemId'\nconst action = parts[0];\nconst checklistId = parts[1] ?? '';\nconst itemId = parts[2] ?? '';\nreturn {\n  action,\n  checklistId,\n  itemId,\n  chatId: String(cb.message.chat.id),\n  callbackQueryId: cb.id,\n  fromName: cb.from.first_name,\n};"
+        "jsCode": "const cb = $input.item.json.callback_query;\n// Format: 'action:itemId'  e.g. 'complete:uuid-of-item'\nconst colonIdx = cb.data.indexOf(':');\nconst action = colonIdx >= 0 ? cb.data.slice(0, colonIdx) : cb.data;\nconst itemId = colonIdx >= 0 ? cb.data.slice(colonIdx + 1) : '';\n\n// Validate known actions — ignore unknown to be forward-compatible\nconst knownActions = ['complete', 'postpone', 'skip'];\nif (!knownActions.includes(action)) {\n  throw new Error('Unknown callback action: ' + action);\n}\n\nreturn {\n  action,\n  itemId,\n  chatId: String(cb.message.chat.id),\n  callbackQueryId: cb.id,\n  fromName: cb.from?.first_name ?? 'there',\n};"
       },
       "id": "parse-callback",
       "name": "Parse Callback Data",
@@ -65,7 +65,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists/{{ $('Parse Callback Data').item.json.checklistId }}/items/{{ $('Parse Callback Data').item.json.itemId }}",
+        "url": "={{ $env.BACKEND_PUBLIC_URL }}/v1/checklists/_/items/{{ $('Parse Callback Data').item.json.itemId }}",
         "method": "PATCH",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
@@ -94,7 +94,7 @@
     {
       "parameters": {
         "chatId": "={{ $('Parse Callback Data').item.json.chatId }}",
-        "text": "={{ $('Parse Callback Data').item.json.action === 'complete' ? '✅ ¡Tarea completada! Sigue así, ' + $('Parse Callback Data').item.json.fromName + ' 💪' : '⏳ Tarea aplazada para mañana. ¡Mañana la tienes!' }}",
+        "text": "={{ $('Parse Callback Data').item.json.action === 'complete' ? '✅ Task completed! Keep it up, ' + $('Parse Callback Data').item.json.fromName + ' 💪' : $('Parse Callback Data').item.json.action === 'postpone' ? '⏳ Task postponed to tomorrow. You got this!' : '⏭️ Task skipped.' }}",
         "additionalFields": {
           "parse_mode": "Markdown"
         }
@@ -117,7 +117,7 @@
     {
       "parameters": {
         "callbackQueryId": "={{ $('Parse Callback Data').item.json.callbackQueryId }}",
-        "text": "={{ $('Parse Callback Data').item.json.action === 'complete' ? 'Completada ✅' : 'Aplazada ⏳' }}",
+        "text": "={{ $('Parse Callback Data').item.json.action === 'complete' ? 'Completed ✅' : $('Parse Callback Data').item.json.action === 'postpone' ? 'Postponed ⏳' : 'Skipped ⏭️' }}",
         "additionalFields": {
           "showAlert": false
         }

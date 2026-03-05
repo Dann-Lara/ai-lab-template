@@ -91,7 +91,7 @@
     {
       "parameters": {
         "chatId": "={{ $json.telegramChatId }}",
-        "text": "=📋 *{{ $json.checklistTitle }}*\n\n⬜ Tarea {{ $json.order + 1 }}/{{ $json.totalItems }}\n\n{{ $json.description }}\n\n💡 _{{ $json.hack }}_\n\n_Progreso: {{ $json.completedItems }}/{{ $json.totalItems }} completadas_",
+        "text": "=📋 *Reminder: {{ $json.checklistTitle }}*\n\n⬜ Task {{ $json.order + 1 }}/{{ $json.totalItems }}\n\n{{ $json.description }}\n\n💡 _{{ $json.hack }}_\n\n_Progress: {{ $json.completedItems }}/{{ $json.totalItems }} completed_",
         "additionalFields": {
           "parse_mode": "Markdown",
           "replyMarkup": "inlineKeyboard",
@@ -101,12 +101,12 @@
                 "row": {
                   "buttons": [
                     {
-                      "text": "✅ Completada",
-                      "callbackData": "={{ 'complete:' + $json.checklistId + ':' + $json.itemId }}"
+                      "text": "✅ Complete",
+                      "callbackData": "={{ 'complete:' + $json.itemId }}"
                     },
                     {
-                      "text": "⏳ Posponer",
-                      "callbackData": "={{ 'postpone:' + $json.checklistId + ':' + $json.itemId }}"
+                      "text": "⏳ Postpone",
+                      "callbackData": "={{ 'postpone:' + $json.itemId }}"
                     }
                   ]
                 }
