@@ -19,6 +19,7 @@ import { usersES, usersEN } from './users';
 import { profileES, profileEN } from './profile';
 import { checklistES, checklistEN } from './checklist';
 import { telegramES, telegramEN } from './telegram';
+import { applicationsES, applicationsEN } from './applications';
 import type { Locale } from './types';
 
 // ── Merged type ──────────────────────────────────────────────────────────────
@@ -30,19 +31,20 @@ export type Messages =
   typeof usersES &
   typeof profileES &
   typeof checklistES &
-  typeof telegramES;
+  typeof telegramES &
+  typeof applicationsES;
 
 // ── Merged translations ──────────────────────────────────────────────────────
 const es: Messages = {
   ...commonES, ...authES, ...homeES,
   ...dashboardES, ...usersES, ...profileES,
-  ...checklistES, ...telegramES,
+  ...checklistES, ...telegramES, ...applicationsES,
 };
 
 const en: Messages = {
   ...commonEN, ...authEN, ...homeEN,
   ...dashboardEN, ...usersEN, ...profileEN,
-  ...checklistEN, ...telegramEN,
+  ...checklistEN, ...telegramEN, ...applicationsEN,
 };
 
 export const translations: Record<Locale, Messages> = { es, en };

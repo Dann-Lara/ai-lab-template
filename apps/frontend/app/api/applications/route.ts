@@ -1,25 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
-const backendUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const BACKEND_URL = process.env['BACKEND_URL'] ?? 'http://localhost:3001';
 
 function authHeader(req: NextRequest): Record<string, string> {
   const token = req.headers.get('authorization');
-  return token ? { Authorization: token, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: token } : {}),
+  };
 }
 
 export async function GET(req: NextRequest) {
-  const res = await fetch(`${backendUrl}/applications`, { headers: authHeader(req) });
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  try {
+    const res = await fetch(`${BACKEND_URL}/v1/applications`, { headers: authHeader(req) });
+    const data = await res.json() as unknown;
+    return NextResponse.json(data, { status: res.status });
+  } catch {
+    return NextResponse.json([], { status: 200 }); // graceful: return empty list if backend not ready
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const res = await fetch(`${backendUrl}/applications`, {
-    method: 'POST',
-    headers: authHeader(req),
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  try {
+    const body = await req.json() as unknown;
+    const res = await fetch(`${BACKEND_URL}/v1/applications`, {
+      method: 'POST',
+      headers: authHeader(req),
+      body: JSON.stringify(body),
+    });
+    const data = await res.json() as unknown;
+    return NextResponse.json(data, { status: res.status });
+  } catch {
+    return NextResponse.json({ error: 'Backend unavailable' }, { status: 502 });
+  }
 }
