@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useI18n } from '../../../../lib/i18n-context';
-import { useAuth } from '../../../../hooks/useAuth';
-import { DashboardLayout } from '../../../../components/ui/DashboardLayout';
-import { useFadeInUp, useStaggerIn } from '../../../../hooks/useAnime';
+import { useI18n } from '../../../lib/i18n-context';
+import { useAuth } from '../../../hooks/useAuth';
+import { DashboardLayout } from '../../../components/ui/DashboardLayout';
+import { useFadeInUp, useStaggerIn } from '../../../hooks/useAnime';
 
 const ALLOWED_ROLES = ['superadmin', 'admin', 'client'];
 
