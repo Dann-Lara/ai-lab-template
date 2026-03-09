@@ -111,6 +111,10 @@ export default function UserDetailPage() {
     try {
       const res = await fetch(`/api/users/${userId}`, { headers: getHeaders() });
       const data = await res.json() as UserDetail;
+      // Normalize: backend may not return permissions yet — default both to true
+      if (!data.permissions) {
+        data.permissions = { checklist: true, applications: true };
+      }
       setDetail(data);
     } catch {
       setDetail(null);

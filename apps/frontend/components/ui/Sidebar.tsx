@@ -158,17 +158,14 @@ export function Sidebar({ variant, user, userPermissions = {} }: SidebarProps) {
 
   return (
     <>
-      {/* Hamburger toggle — always visible */}
+      {/* Hamburger toggle — sits inside the fixed navbar bar (h-14) */}
       <button
         onClick={() => setOpen(v => !v)}
         aria-label="Toggle sidebar"
-        className="fixed top-3.5 left-4 z-[200] p-2 rounded-lg
-                   bg-white/80 dark:bg-slate-900/80 backdrop-blur-md
-                   border border-slate-200 dark:border-slate-700
+        className="fixed top-0 left-0 z-[200] w-14 h-14 flex items-center justify-center
                    text-slate-500 dark:text-slate-400
                    hover:text-sky-600 dark:hover:text-sky-400
-                   hover:border-sky-300 dark:hover:border-sky-500/50
-                   transition-all duration-200 shadow-sm"
+                   transition-colors duration-150"
       >
         {open ? <IconX /> : <IconMenu />}
       </button>
@@ -177,32 +174,19 @@ export function Sidebar({ variant, user, userPermissions = {} }: SidebarProps) {
       <div
         ref={overlayRef}
         onClick={() => setOpen(false)}
-        style={{ display: 'none', opacity: 0 }}
-        className="fixed inset-0 z-[150] bg-slate-950/40 backdrop-blur-[2px]"
+        style={{ display: 'none', opacity: 0, top: '3.5rem' }}
+        className="fixed inset-x-0 bottom-0 z-[150] bg-slate-950/40 backdrop-blur-[2px]"
       />
 
-      {/* Sidebar panel */}
+      {/* Sidebar panel — starts below the fixed navbar (top-14 = 3.5rem) */}
       <aside
         ref={sidebarRef}
-        style={{ transform: 'translateX(-100%)' }}
-        className="fixed top-0 left-0 z-[160] h-full w-64
+        style={{ transform: 'translateX(-100%)', height: 'calc(100vh - 3.5rem)' }}
+        className="fixed top-14 left-0 z-[160] w-64
                    bg-white dark:bg-slate-950
                    border-r border-slate-200 dark:border-slate-800
                    flex flex-col shadow-2xl"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4
-                        border-b border-slate-100 dark:border-slate-800 h-14">
-          <span className="font-mono text-xs text-sky-600 dark:text-sky-400
-                           bg-sky-50 dark:bg-sky-400/10
-                           border border-sky-200 dark:border-sky-400/20
-                           px-2 py-1 rounded">
-            &gt;_ AI.Lab
-          </span>
-          <span className="font-mono text-[9px] uppercase tracking-[0.3em] text-slate-400">
-            {variant === 'admin' ? t.nav.adminPanel : t.nav.clientPanel}
-          </span>
-        </div>
 
         {/* Nav items */}
         <nav className="flex-1 overflow-y-auto py-4 px-3">
