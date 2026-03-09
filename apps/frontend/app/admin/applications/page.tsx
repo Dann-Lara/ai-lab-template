@@ -257,19 +257,13 @@ function AiFeedbackPanel({ stats, apps, t }: {
   async function loadFeedback() {
     setLoading(true);
     try {
-      const summary = `Total: ${stats.total}, Aceptadas: ${stats.accepted}, Rechazadas: ${stats.rejected}, En proceso: ${stats.pending}, Tasa éxito: ${stats.acceptRate}%, ATS promedio: ${stats.avgAts}%, Empresas: ${apps.map(a => a.company).join(', ')}`;
-      const res = await fetch('/api/ai/generate', {
+      const res = await fetch('/api/applications/feedback', {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({
-          prompt: `Analiza estos datos de búsqueda de empleo y da feedback constructivo con métricas y 3-5 recomendaciones accionables concretas en español. Sé conciso y directo.\n\n${summary}`,
-          systemMessage: 'Eres un coach de carrera experto en mercado laboral tech. Responde en español.',
-          maxTokens: 800,
-          temperature: 0.5,
-        }),
       });
-      const data = await res.json() as { result: string };
-      setFeedback(data.result || 'No se pudo generar feedback.');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as { feedback: string };
+      setFeedback(data.feedback || 'No se pudo generar feedback.');
     } catch { setFeedback('Error al conectar con la IA.'); }
     finally { setLoading(false); }
   }
@@ -348,8 +342,21 @@ export default function ApplicationsPage() {
     finally { setAppsLoading(false); }
   }, []);
 
-  const loadBaseCV = useCallback(() => {
-    if (typeof window === 'undefined') return;
+  const loadBaseCV = useCallback(async () => {
+    // Try backend first, fall back to localStorage cache
+    try {
+      const res = await fetch('/api/applications/base-cv', { headers: getHeaders() });
+      if (res.ok) {
+        const data = await res.json() as BaseCV;
+        if (data && data.fullName !== undefined) {
+          setBaseCV({ ...EMPTY_CV, ...data });
+          // Keep localStorage in sync as offline cache
+          localStorage.setItem('ailab_base_cv', JSON.stringify(data));
+          return;
+        }
+      }
+    } catch { /* fallback */ }
+    // Offline fallback: read from localStorage
     try {
       const raw = localStorage.getItem('ailab_base_cv');
       if (raw) setBaseCV({ ...EMPTY_CV, ...JSON.parse(raw) as BaseCV });
@@ -366,11 +373,14 @@ export default function ApplicationsPage() {
   async function saveBaseCV() {
     setCvSaving(true);
     try {
+      const res = await fetch('/api/applications/base-cv', {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(baseCV),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Cache locally for offline use
       localStorage.setItem('ailab_base_cv', JSON.stringify(baseCV));
-      // Non-blocking sync to backend
-      fetch('/api/applications/base-cv', {
-        method: 'PUT', headers: getHeaders(), body: JSON.stringify(baseCV),
-      }).catch(() => {});
       setCvExtracted(false);
       showToast(t.applications.toastCVSaved, 'ok');
     } catch { showToast(t.applications.toastCVSaveError, 'err'); }
@@ -398,19 +408,26 @@ export default function ApplicationsPage() {
     }
     setGenerating(true); setGeneratedCV(null); setAtsScore(null);
     try {
+      // Backend loads the user's base CV from DB automatically
       const res = await fetch('/api/applications/generate-cv', {
-        method: 'POST', headers: getHeaders(),
+        method: 'POST',
+        headers: getHeaders(),
         body: JSON.stringify({
-          prompt: `CV BASE:\nNombre: ${baseCV.fullName} | Email: ${baseCV.email} | Tel: ${baseCV.phone} | Ubicación: ${baseCV.location}\nLinkedIn: ${baseCV.linkedIn}\nRESUMEN: ${baseCV.summary}\nEXPERIENCIA: ${baseCV.experience}\nEDUCACIÓN: ${baseCV.education}\nHABILIDADES: ${baseCV.skills}\nIDIOMAS: ${baseCV.languages}\nCERTIFICACIONES: ${baseCV.certifications}\n\nOFERTA: ${newForm.company} — ${newForm.position}\n${newForm.jobOffer}\n\nInstructions: Optimize CV for ATS, incorporate exact keywords, adapt summary. Do NOT invent data. Clean format. Calculate ATS Match Score 0-100.\nReturn ONLY: {"atsScore":<number>,"cvText":"<CV separated by \\n\\n>"}`,
           company: newForm.company,
           position: newForm.position,
           jobOffer: newForm.jobOffer,
         }),
       });
+      if (!res.ok) {
+        const err = await res.json() as { message?: string };
+        throw new Error(err.message ?? `HTTP ${res.status}`);
+      }
       const data = await res.json() as { atsScore: number; cvText: string };
       setAtsScore(data.atsScore ?? 70);
       setGeneratedCV(data.cvText ?? '');
-    } catch { showToast(t.applications.toastGenerateError, 'err'); }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : t.applications.toastGenerateError, 'err');
+    }
     finally { setGenerating(false); }
   }
 
