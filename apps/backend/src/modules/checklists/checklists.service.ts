@@ -18,6 +18,15 @@ import type {
 } from './dto/checklist.dto';
 import { ConfigService } from '@nestjs/config';
 
+// ── Escape LangChain template variables in user-supplied strings ──────────────
+// LangChain ChatPromptTemplate treats {word} as a template variable and throws
+// "Missing value for input variable" if the braces don't match a known variable.
+// Escape { } from user-provided data before interpolating into prompts.
+function esc(text: string): string {
+  return (text ?? '').replace(/\{/g, '(').replace(/\}/g, ')');
+}
+
+
 // ── Simple in-memory rate limiter per user (resets on restart) ──────────────
 const generationCounts = new Map<string, { count: number; resetAt: number }>();
 
@@ -142,13 +151,13 @@ function buildGenerationPrompt(p: CreateChecklistParamsDto): string {
   return `Productivity expert. Output ONLY valid JSON — start with { end with } — no markdown, no text outside JSON.
 
 Input:
-- title: ${p.title}
-- objective: ${p.objective}
-${p.category ? `- category: ${p.category}` : ''}
+- title: ${esc(p.title)}
+- objective: ${esc(p.objective)}
+${p.category ? `- category: ${esc(p.category ?? '')}` : ''}
 - period: ${p.startDate} to ${p.endDate}
 - difficulty: ${p.difficulty}
 - daily_minutes: ${p.dailyTimeAvailable}
-${p.goalMetric ? `- goal: ${p.goalMetric}` : ''}
+${p.goalMetric ? `- goal: ${esc(p.goalMetric ?? '')}` : ''}
 - style: ${p.style}
 - language: ${lang}
 
@@ -166,7 +175,7 @@ Required JSON schema (no extra fields, no comments):
 function buildRegenerationPrompt(p: CreateChecklistParamsDto, feedback: string): string {
   return `${buildGenerationPrompt(p)}
 
-User feedback: "${feedback}"
+User feedback: "${esc(feedback)}"
 
 Apply feedback. Output ONLY the revised JSON — same schema, no extra text.`;
 }
@@ -184,7 +193,7 @@ function buildFeedbackPrompt(data: {
       'Output plain text only — no markdown, no bullet points, no lists. Max 150 words.',
     prompt:
       `Checklist: "${data.title}"\n` +
-      `Goal: ${data.objective}\n` +
+      `Goal: ${esc(data.objective)}\n` +
       `Period: ${data.startDate} → ${data.endDate}\n` +
       `Completed this week: ${data.completedLastWeek} of ${data.totalTasks} tasks. Trend: ${data.trend}.\n` +
       `Next up: ${upcoming}\n\n` +

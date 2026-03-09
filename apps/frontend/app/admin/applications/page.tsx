@@ -296,9 +296,11 @@ export default function ApplicationsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(ALLOWED_ROLES);
 
-  const [permChecked, setPermChecked] = useState(false);
-  const [hasAccess, setHasAccess] = useState(true);
   const { can, ready: permsReady } = usePermissions(user);
+  // Derive access directly — no separate useEffect needed.
+  // permsReady guards the loading state; once ready, can() is the source of truth.
+  const hasAccess  = !permsReady || can('applications');
+  const permChecked = permsReady;
 
   const [tab, setTab] = useState<Tab>('list');
   const [apps, setApps] = useState<Application[]>([]);
@@ -323,13 +325,6 @@ export default function ApplicationsPage() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
   }
-
-  // ── Check permissions via usePermissions hook ───────────────────────────────
-  useEffect(() => {
-    if (authLoading || !user || !permsReady) return;
-    setHasAccess(can('applications'));
-    setPermChecked(true);
-  }, [authLoading, user, permsReady, can]);
 
   const loadApps = useCallback(async () => {
     setAppsLoading(true);
@@ -364,11 +359,11 @@ export default function ApplicationsPage() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && user && hasAccess && permChecked) {
+    if (!authLoading && user && permsReady && hasAccess) {
       loadApps();
       loadBaseCV();
     }
-  }, [authLoading, user, hasAccess, permChecked, loadApps, loadBaseCV]);
+  }, [authLoading, user, hasAccess, permsReady, loadApps, loadBaseCV]);
 
   async function saveBaseCV() {
     setCvSaving(true);
@@ -468,7 +463,7 @@ export default function ApplicationsPage() {
   };
 
   // ── Auth loading ────────────────────────────────────────────────────────────
-  if (authLoading || !user || !permChecked || !permsReady) {
+  if (authLoading || !user || !permsReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <Spinner />

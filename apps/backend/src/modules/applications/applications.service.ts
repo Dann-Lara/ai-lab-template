@@ -6,14 +6,22 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { generateText } from '@ai-lab/ai-core';
 
-import { ApplicationEntity } from './entities/application.entity';
-import { BaseCvEntity } from './entities/application.entity';
+import { ApplicationEntity, BaseCvEntity } from './entities/application.entity';
 import type {
   CreateApplicationDto, PatchApplicationDto,
   UpsertBaseCvDto, GenerateCvDto, ExtractCvDto,
 } from './dto/application.dto';
 
-// ── JSON extractor — same robust pattern as checklists.service ────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// LangChain treats {word} inside prompts as template variables and throws
+// "Missing value for input variable" when it finds any curly brace pair.
+// Escape every { and } in user-supplied content before sending to generateText.
+// ─────────────────────────────────────────────────────────────────────────────
+function esc(text: string): string {
+  return (text ?? '').replace(/\{/g, '(').replace(/\}/g, ')');
+}
+
+// ── Robust JSON extractor — same pattern as checklists.service ────────────────
 function extractJson<T>(text: string): T | null {
   const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
   const start = cleaned.indexOf('{');
@@ -31,7 +39,7 @@ function extractJson<T>(text: string): T | null {
   return null;
 }
 
-// ── Retry with backoff (same helper as checklists) ────────────────────────────
+// ── Retry with exponential backoff ────────────────────────────────────────────
 async function withRetry<T>(fn: () => Promise<T>, retries = 2, baseMs = 2000): Promise<T> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try { return await fn(); }
@@ -43,7 +51,6 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, baseMs = 2000): P
   throw new Error('unreachable');
 }
 
-// ── CV fields required for generation ────────────────────────────────────────
 const CV_FIELDS = [
   'fullName', 'email', 'phone', 'location', 'linkedIn',
   'summary', 'experience', 'education', 'skills', 'languages', 'certifications',
@@ -65,18 +72,16 @@ export class ApplicationsService {
   async getBaseCV(userId: string): Promise<BaseCvEntity> {
     const existing = await this.cvRepo.findOne({ where: { userId } });
     if (existing) return existing;
-    // Return an empty template without saving
-    return this.cvRepo.create({ userId, fullName: '', email: '', phone: '', location: '',
+    return this.cvRepo.create({
+      userId, fullName: '', email: '', phone: '', location: '',
       linkedIn: '', summary: '', experience: '', education: '',
-      skills: '', languages: '', certifications: '' });
+      skills: '', languages: '', certifications: '',
+    });
   }
 
   async upsertBaseCV(userId: string, dto: UpsertBaseCvDto): Promise<BaseCvEntity> {
     let entity = await this.cvRepo.findOne({ where: { userId } });
-    if (!entity) {
-      entity = this.cvRepo.create({ userId });
-    }
-    // Merge only provided fields
+    if (!entity) entity = this.cvRepo.create({ userId });
     Object.assign(entity, dto);
     return this.cvRepo.save(entity);
   }
@@ -84,10 +89,7 @@ export class ApplicationsService {
   // ── Applications CRUD ─────────────────────────────────────────────────────
 
   async findAll(userId: string): Promise<ApplicationEntity[]> {
-    return this.appRepo.find({
-      where: { userId },
-      order: { appliedAt: 'DESC' },
-    });
+    return this.appRepo.find({ where: { userId }, order: { appliedAt: 'DESC' } });
   }
 
   async findOne(userId: string, id: string): Promise<ApplicationEntity> {
@@ -126,94 +128,78 @@ export class ApplicationsService {
     await this.appRepo.remove(app);
   }
 
-  // ── AI: Generate ATS CV ───────────────────────────────────────────────────
+  // ── AI: Generate ATS-optimized CV ─────────────────────────────────────────
 
   async generateCv(
     userId: string,
     dto: GenerateCvDto,
   ): Promise<{ atsScore: number; cvText: string }> {
-    // Load the user's base CV for context
     const baseCV = await this.cvRepo.findOne({ where: { userId } });
     if (!baseCV || !baseCV.fullName || (!baseCV.experience && !baseCV.summary)) {
-      throw new BadRequestException('Base CV is incomplete. Please fill in name, email and experience/summary before generating.');
+      throw new BadRequestException(
+        'Base CV is incomplete. Please fill in name, email and experience/summary before generating.',
+      );
     }
 
-    const cvContext = `
-Name: ${baseCV.fullName}
-Email: ${baseCV.email}
-Phone: ${baseCV.phone}
-Location: ${baseCV.location}
-LinkedIn: ${baseCV.linkedIn}
+    // Build systemMessage and prompt using plain string concatenation.
+    // NO curly braces allowed in the literal text — LangChain treats them as template vars.
+    // User-supplied data is escaped via esc() which converts { } to ( ).
+    const systemMessage =
+      'You are an expert ATS CV optimizer.\n' +
+      'You receive a candidate base CV and a job offer, and produce a fully optimized ATS CV.\n' +
+      'Rules:\n' +
+      '1. Incorporate exact keywords from the job offer naturally.\n' +
+      '2. Reorder and emphasize the most relevant experience.\n' +
+      '3. Adapt the professional summary specifically for this role.\n' +
+      '4. NEVER invent data - only reorganize and optimize existing information.\n' +
+      '5. Use clean plain-text format suitable for ATS parsers (no tables, columns or graphics).\n' +
+      '6. Calculate an ATS Match Score from 0 to 100 based on keyword overlap and relevance.\n\n' +
+      'Respond with ONLY a valid JSON object - no markdown, no explanation:\n' +
+      '{"atsScore":<integer 0-100>,"cvText":"<full optimized CV as plain text>"}';
 
-PROFESSIONAL SUMMARY:
-${baseCV.summary}
+    const cvBlock =
+      'Name: ' + esc(baseCV.fullName) + '\n' +
+      'Email: ' + esc(baseCV.email) + '\n' +
+      'Phone: ' + esc(baseCV.phone) + '\n' +
+      'Location: ' + esc(baseCV.location) + '\n' +
+      'LinkedIn: ' + esc(baseCV.linkedIn) + '\n\n' +
+      'PROFESSIONAL SUMMARY:\n' + esc(baseCV.summary) + '\n\n' +
+      'WORK EXPERIENCE:\n' + esc(baseCV.experience) + '\n\n' +
+      'EDUCATION:\n' + esc(baseCV.education) + '\n\n' +
+      'SKILLS:\n' + esc(baseCV.skills) + '\n\n' +
+      'LANGUAGES:\n' + esc(baseCV.languages) + '\n\n' +
+      'CERTIFICATIONS:\n' + esc(baseCV.certifications);
 
-WORK EXPERIENCE:
-${baseCV.experience}
+    const prompt =
+      'JOB OFFER - ' + esc(dto.company) + ' / ' + esc(dto.position) + ':\n' +
+      esc(dto.jobOffer) + '\n\n' +
+      '---\n\n' +
+      'CANDIDATE BASE CV:\n' + cvBlock + '\n\n' +
+      'Generate the optimized ATS CV and return ONLY the JSON object.';
 
-EDUCATION:
-${baseCV.education}
+    this.logger.log(`Generating ATS CV for user ${userId} -> ${dto.position} @ ${dto.company}`);
 
-SKILLS:
-${baseCV.skills}
-
-LANGUAGES:
-${baseCV.languages}
-
-CERTIFICATIONS:
-${baseCV.certifications}`.trim();
-
-    const systemMessage = `You are an expert ATS CV optimizer.
-You receive a candidate's base CV and a job offer, and you produce a fully optimized ATS CV.
-Rules:
-1. Incorporate exact keywords from the job offer naturally
-2. Reorder and emphasize the most relevant experience
-3. Adapt the summary specifically for this role
-4. NEVER invent data — only reorganize and optimize existing information
-5. Use clean plain-text format suitable for ATS parsers (no tables, columns or graphics)
-6. Calculate an ATS Match Score (0-100) based on keyword overlap and relevance
-
-You MUST respond with ONLY a valid JSON object (no markdown, no explanation):
-{"atsScore":<integer 0-100>,"cvText":"<full optimized CV as plain text with sections separated by \\n\\n>"}`;
-
-    const prompt = `JOB OFFER — ${dto.company} / ${dto.position}:
-${dto.jobOffer}
-
----
-
-CANDIDATE BASE CV:
-${cvContext}
-
-Generate the optimized ATS CV and return ONLY the JSON object.`;
-
-    this.logger.log(`Generating ATS CV for user ${userId} → ${dto.position} @ ${dto.company}`);
-
-    const result = await withRetry(async () => {
+    return withRetry(async () => {
       const { text, model } = await generateText({
         prompt,
         systemMessage,
         maxTokens: 3000,
         temperature: 0.3,
       });
-
       this.logger.debug(`AI model: ${model} — response length: ${text.length} chars`);
-
       const parsed = extractJson<{ atsScore: number; cvText: string }>(text);
       if (!parsed || typeof parsed.atsScore !== 'number' || !parsed.cvText) {
-        this.logger.warn(`AI returned unexpected format: ${text.slice(0, 200)}`);
+        this.logger.warn(`Unexpected AI format: ${text.slice(0, 200)}`);
         throw new Error('AI response missing atsScore or cvText');
       }
-
       return {
         atsScore: Math.min(100, Math.max(0, Math.round(parsed.atsScore))),
         cvText: parsed.cvText.trim(),
       };
     }, 2, 2000);
-
-    return result;
   }
 
-  // ── AI: Extract CV from PDF text ──────────────────────────────────────────
+  // ── AI: Extract CV data from PDF text ────────────────────────────────────
 
   async extractCvFromText(
     userId: string,
@@ -223,54 +209,49 @@ Generate the optimized ATS CV and return ONLY the JSON object.`;
       throw new BadRequestException('PDF text is too short to extract data from');
     }
 
-    // Truncate to ~8000 chars to stay within token limits
     const truncated = dto.pdfText.length > 8000
       ? dto.pdfText.slice(0, 8000) + '\n...[truncated]'
       : dto.pdfText;
 
-    const systemMessage = `You are a precise CV/resume data extractor.
-You receive raw text extracted from a PDF CV.
-You MUST return ONLY a valid JSON object — no markdown, no explanation, no extra text.
-The JSON must contain exactly these string keys (use empty string "" if not found):
-fullName, email, phone, location, linkedIn, summary, experience, education, skills, languages, certifications
+    // All curly braces in the system message are escaped as their unicode equivalents
+    // OR removed — LangChain ChatPromptTemplate throws on any {word} it doesn't know.
+    const systemMessage =
+      'You are a precise CV/resume data extractor.\n' +
+      'You receive raw text extracted from a PDF CV.\n' +
+      'Return ONLY a valid JSON object with NO markdown, NO explanation, NO extra text.\n' +
+      'Required keys (use empty string if not found):\n' +
+      'fullName, email, phone, location, linkedIn, summary, experience, education, skills, languages, certifications\n\n' +
+      'Rules:\n' +
+      '- experience: company name, job title, date range, key achievements per role\n' +
+      '- education: institution, degree/field, graduation year\n' +
+      '- skills: comma-separated list\n' +
+      '- languages: e.g. Spanish (native), English (C1)\n' +
+      '- All values must be plain strings\n' +
+      '- Your entire response must start with { and end with }';
 
-Extraction rules:
-- experience: include company, job title, date range (e.g. "Jan 2020 – Mar 2022"), and key achievements for each role, separated by newlines
-- education: institution, degree/field, graduation year
-- skills: comma-separated list of technical skills
-- languages: e.g. "Spanish (native), English (C1)"
-- All values must be plain strings (no nested objects or arrays)
-- Start response with { and end with } — nothing before or after`;
-
-    const prompt = `Extract all CV/resume information from this text:\n\n${truncated}`;
+    const prompt = 'Extract all CV information from this text and return as JSON:\n\n' + esc(truncated);
 
     this.logger.log(`Extracting CV for user ${userId} — text length: ${dto.pdfText.length} chars`);
 
-    const result = await withRetry(async () => {
+    return withRetry(async () => {
       const { text, model } = await generateText({
         prompt,
         systemMessage,
         maxTokens: 2000,
         temperature: 0.05,
       });
-
-      this.logger.debug(`AI model: ${model} — response: ${text.slice(0, 150)}`);
-
+      this.logger.debug(`AI model: ${model} — response preview: ${text.slice(0, 150)}`);
       const parsed = extractJson<Record<string, string>>(text);
       if (!parsed) {
-        this.logger.warn(`Could not extract JSON from response: ${text.slice(0, 300)}`);
+        this.logger.warn(`Could not extract JSON from: ${text.slice(0, 300)}`);
         throw new Error('AI returned unstructured response');
       }
-
-      // Normalize: ensure all required keys exist as strings
       const normalized: Record<string, string> = {};
       for (const key of CV_FIELDS) {
         normalized[key] = typeof parsed[key] === 'string' ? parsed[key] : '';
       }
       return normalized;
     }, 2, 2000);
-
-    return result;
   }
 
   // ── AI: Job search coaching feedback ─────────────────────────────────────
@@ -281,31 +262,31 @@ Extraction rules:
       throw new BadRequestException('Need at least 2 applications to generate feedback');
     }
 
-    const total    = apps.length;
-    const accepted = apps.filter(a => a.status === 'accepted').length;
-    const rejected = apps.filter(a => a.status === 'rejected').length;
-    const pending  = apps.filter(a => a.status === 'pending' || a.status === 'in_process').length;
+    const total      = apps.length;
+    const accepted   = apps.filter(a => a.status === 'accepted').length;
+    const rejected   = apps.filter(a => a.status === 'rejected').length;
+    const pending    = apps.filter(a => a.status === 'pending' || a.status === 'in_process').length;
     const acceptRate = Math.round((accepted / total) * 100);
-    const withAts  = apps.filter(a => a.atsScore !== null && a.atsScore !== undefined);
-    const avgAts   = withAts.length
+    const withAts    = apps.filter(a => a.atsScore != null);
+    const avgAts     = withAts.length
       ? Math.round(withAts.reduce((s, a) => s + (a.atsScore ?? 0), 0) / withAts.length)
       : 0;
-    const companies = apps.map(a => `${a.company} (${a.position})`).join(', ');
+    const companies  = apps.map(a => esc(a.company) + ' (' + esc(a.position) + ')').join(', ');
 
-    const systemMessage = `You are an expert career coach specializing in tech job searches.
-Give concise, actionable feedback in Spanish.
-Response must be plain text only — no markdown, no bullet points. Max 200 words.`;
+    const systemMessage =
+      'You are an expert career coach specializing in tech job searches.\n' +
+      'Give concise, actionable feedback in Spanish.\n' +
+      'Plain text only - no markdown, no bullet points. Max 200 words.';
 
-    const prompt = `Analyze this job search data and provide constructive feedback with 3-5 specific, actionable recommendations:
-
-Total applications: ${total}
-Accepted: ${accepted} (${acceptRate}% success rate)
-Rejected: ${rejected}
-In process/pending: ${pending}
-Average ATS score: ${avgAts}%
-Companies applied to: ${companies}
-
-Provide warm, specific, data-driven feedback in Spanish.`;
+    const prompt =
+      'Analyze this job search data and give 3-5 specific actionable recommendations:\n\n' +
+      'Total applications: ' + total + '\n' +
+      'Accepted: ' + accepted + ' (' + acceptRate + '% success rate)\n' +
+      'Rejected: ' + rejected + '\n' +
+      'In process/pending: ' + pending + '\n' +
+      'Average ATS score: ' + avgAts + '%\n' +
+      'Companies applied to: ' + companies + '\n\n' +
+      'Provide warm, specific, data-driven feedback in Spanish.';
 
     const { text } = await withRetry(
       () => generateText({ prompt, systemMessage, maxTokens: 400, temperature: 0.6 }),

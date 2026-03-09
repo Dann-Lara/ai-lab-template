@@ -7,6 +7,7 @@ import { useI18n } from '../../../../lib/i18n-context';
 import { useAuth } from '../../../../hooks/useAuth';
 import { DashboardLayout } from '../../../../components/ui/DashboardLayout';
 import { useFadeInUp, useStaggerIn } from '../../../../hooks/useAnime';
+import type { AuthUser } from '../../../../lib/auth';
 import { usePermissions, MODULE_PERMISSION_KEYS } from '../../../../hooks/usePermissions';
 
 const ADMIN_ROLES = ['superadmin', 'admin'];
@@ -113,9 +114,11 @@ export default function UserDetailPage() {
   const headerRef = useFadeInUp<HTMLDivElement>({ delay: 0, duration: 500 });
   const cardsRef = useStaggerIn<HTMLDivElement>({ delay: 100, stagger: 80 });
 
-  // Build a fake AuthUser for usePermissions — we need to read the target user's perms
-  // usePermissions reads from localStorage keyed by userId
-  const targetFakeUser = userId ? { userId, email: '', name: '', role: 'client' as const } : null;
+  // Pass userId directly as a minimal fake AuthUser — usePermissions only uses
+  // the primitive fields (userId, role) so no memoization needed.
+  const targetFakeUser: AuthUser | null = userId
+    ? { userId, email: '', name: '', role: 'client' }
+    : null;
   const { permissions: targetPerms, toggle: togglePerm, ready: permsReady } = usePermissions(targetFakeUser);
 
   // Load user detail
