@@ -15,9 +15,9 @@ interface DashboardLayoutProps {
 
 /**
  * Shell layout for admin/client panels.
- * Permissions are loaded internally via usePermissions — no need to pass them
- * down from each page. To add a new module, update MODULE_PERMISSION_KEYS in
- * hooks/usePermissions.ts and add the nav item in Sidebar.tsx.
+ * Permissions are fetched from the backend (GET /api/users/me/permissions).
+ * To add a new module: add the key to MODULE_KEYS in user.entity.ts (backend)
+ * and add a nav item in Sidebar.tsx. No frontend config needed.
  */
 export function DashboardLayout({ variant, user, title, children }: DashboardLayoutProps) {
   const { permissions, ready } = usePermissions(user);

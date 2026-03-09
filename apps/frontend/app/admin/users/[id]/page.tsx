@@ -7,8 +7,7 @@ import { useI18n } from '../../../../lib/i18n-context';
 import { useAuth } from '../../../../hooks/useAuth';
 import { DashboardLayout } from '../../../../components/ui/DashboardLayout';
 import { useFadeInUp, useStaggerIn } from '../../../../hooks/useAnime';
-import type { AuthUser } from '../../../../lib/auth';
-import { usePermissions, MODULE_PERMISSION_KEYS } from '../../../../hooks/usePermissions';
+import { invalidatePermissionsCache } from '../../../../hooks/usePermissions';
 
 const ADMIN_ROLES = ['superadmin', 'admin'];
 
@@ -58,7 +57,6 @@ function getHeaders(): Record<string, string> {
   return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
-// Permissions managed via usePermissions hook (see hooks/usePermissions.ts)
 
 const ROLE_STYLES: Record<string, string> = {
   superadmin: 'text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-400/30 bg-yellow-50 dark:bg-yellow-400/5',
@@ -114,22 +112,15 @@ export default function UserDetailPage() {
   const headerRef = useFadeInUp<HTMLDivElement>({ delay: 0, duration: 500 });
   const cardsRef = useStaggerIn<HTMLDivElement>({ delay: 100, stagger: 80 });
 
-  // Pass userId directly as a minimal fake AuthUser — usePermissions only uses
-  // the primitive fields (userId, role) so no memoization needed.
-  const targetFakeUser: AuthUser | null = userId
-    ? { userId, email: '', name: '', role: 'client' }
-    : null;
-  const { permissions: targetPerms, toggle: togglePerm, ready: permsReady } = usePermissions(targetFakeUser);
-
-  // Load user detail
+  // Load user detail — backend now returns permissions from DB
   const load = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/users/${userId}`, { headers: getHeaders() });
       const data = await res.json() as UserDetail;
-      // permissions will be injected from usePermissions below
-      data.permissions = {};
+      // Backend always returns a complete permissions map (merged with defaults)
+      if (!data.permissions) data.permissions = { checklist: true, applications: true };
       setDetail(data);
     } catch {
       setDetail(null);
@@ -148,12 +139,22 @@ export default function UserDetailPage() {
     setTimeout(() => setToast(null), 3000);
   }
 
-  // Toggle permission via usePermissions hook (persisted to localStorage)
-  function togglePermission(permKey: string, current: boolean) {
+  // Toggle permission — calls PATCH /api/users/:id/permissions → backend saves to DB
+  async function togglePermission(permKey: string, current: boolean) {
     if (!isSuperAdmin || !detail) return;
     setPermLoading(permKey);
     try {
-      togglePerm(permKey, !current);
+      const res = await fetch(`/api/users/${detail.id}/permissions`, {
+        method: 'PATCH',
+        headers: getHeaders(),
+        body: JSON.stringify({ key: permKey, value: !current }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const updated = await res.json() as Record<string, boolean>;
+      // Invalidate permissions cache so the sidebar refreshes on next render
+      invalidatePermissionsCache(detail.id);
+      // Update local state immediately with the server response
+      setDetail(prev => prev ? { ...prev, permissions: { ...prev.permissions, ...updated } } : prev);
       showToast(
         `${permKey === 'checklist' ? 'Checklists' : 'Postulaciones'} ${!current ? 'habilitado' : 'deshabilitado'}`,
         'ok'
@@ -245,7 +246,7 @@ export default function UserDetailPage() {
 
             <div ref={cardsRef} className="grid gap-4 sm:grid-cols-2">
               {PERMISSION_MODULES.map(mod => {
-                const enabled = permsReady ? (targetPerms[mod.key] === true) : true;
+                const enabled = detail.permissions?.[mod.key as keyof typeof detail.permissions] !== false;
                 return (
                   <div key={mod.key}
                     className={`card p-5 transition-all duration-200
