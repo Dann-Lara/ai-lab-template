@@ -149,12 +149,16 @@ export function Sidebar({ variant, user }: SidebarProps) {
 
   function canAccess(item: NavItem): boolean {
     if (item.adminOnly && !isAdmin) return false;
-    // Admins and superadmins always see every module
     if (isAdmin) return true;
-    // While permissions are loading, hide permission-gated items to avoid flash
-    if (!permsReady) return !item.permission;
-    // Client: show item only if explicitly allowed
-    if (item.permission) return permissions[item.permission] === true;
+    if (!permsReady) {
+      console.log(`[Sidebar] canAccess(${item.key}) → WAITING (permsReady=false)`);
+      return !item.permission;
+    }
+    if (item.permission) {
+      const allowed = permissions[item.permission] === true;
+      console.log(`[Sidebar] canAccess(${item.key}) perm=${item.permission} → ${allowed} | permissions:`, JSON.stringify(permissions));
+      return allowed;
+    }
     return true;
   }
 

@@ -290,17 +290,19 @@ function AiFeedbackPanel({ stats, apps, t }: {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-export default function ApplicationsPage() {
+// ─── Inner Content (runs inside PermissionsProvider) ────────────────────────
+function ApplicationsContent() {
   const { t } = useI18n();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(ALLOWED_ROLES);
 
-  const { can, ready: permsReady } = usePermissions();
-  // Derive access directly — no separate useEffect needed.
-  // permsReady guards the loading state; once ready, can() is the source of truth.
+  const { can, ready: permsReady, permissions, _mounted } = usePermissions();
+  console.log(`[ApplicationsContent] render — _mounted=${_mounted} permsReady=${permsReady} permissions=${JSON.stringify(permissions)}`);
+  // While loading → hasAccess=true (show spinner, not lock screen)
+  // Once ready    → can() is the source of truth
   const hasAccess  = !permsReady || can('applications');
   const permChecked = permsReady;
+  console.log(`[ApplicationsContent] hasAccess=${hasAccess} permChecked=${permChecked}`);
 
   const [tab, setTab] = useState<Tab>('list');
   const [apps, setApps] = useState<Application[]>([]);
@@ -823,5 +825,28 @@ export default function ApplicationsPage() {
         </div>
       )}
     </DashboardLayout>
+  );
+}
+
+// ─── Page Shell (mounts auth + PermissionsProvider) ─────────────────────────
+// usePermissions() can only be called inside PermissionsProvider.
+// This shell handles auth, mounts the provider, then renders ApplicationsContent.
+export default function ApplicationsPage() {
+  const { user, loading: authLoading } = useAuth(ALLOWED_ROLES);
+
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <span className="w-6 h-6 border-2 border-slate-300 dark:border-slate-700 border-t-sky-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const variant = (user.role === 'client' ? 'client' : 'admin') as 'admin' | 'client';
+
+  return (
+    <PermissionsProvider user={user}>
+      <ApplicationsContent />
+    </PermissionsProvider>
   );
 }

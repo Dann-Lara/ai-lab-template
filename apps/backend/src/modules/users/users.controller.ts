@@ -56,7 +56,9 @@ export class UsersController {
   @ApiOperation({ summary: 'Get effective module permissions for the current user' })
   async getMyPermissions(@CurrentUser() user: JwtUser): Promise<PermissionsMap> {
     const full = await this.usersService.findOne(user.userId);
-    return this.usersService.getEffectivePermissions(full);
+    const result = this.usersService.getEffectivePermissions(full);
+    console.log(`[UsersController] GET me/permissions userId=${user.userId} role=${user.role} result=${JSON.stringify(result)}`);
+    return result;
   }
 
   // ── Admin — user management ────────────────────────────────────────────────

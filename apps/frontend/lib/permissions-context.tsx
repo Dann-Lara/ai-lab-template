@@ -1,20 +1,3 @@
-/**
- * PermissionsContext — Single source of truth for module permissions.
- *
- * Architecture:
- *   DashboardLayout (mounts provider, does ONE fetch)
- *     ├── Sidebar (reads context → filters nav items)
- *     └── Page content (reads context → gate access)
- *
- * This eliminates the race condition that occurred when DashboardLayout and
- * the page each called usePermissions() independently, causing two separate
- * fetch instances whose useState never shared state between them.
- *
- * Adding a new module:
- *   1. Add the key to MODULE_KEYS in apps/backend/.../user.entity.ts
- *   2. Add the nav item in Sidebar.tsx with permission: 'your-key'
- *   3. Call usePermissions().can('your-key') on the module page
- */
 'use client';
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -25,13 +8,16 @@ export type PermissionsMap = Record<string, boolean>;
 interface PermissionsContextValue {
   permissions: PermissionsMap;
   ready: boolean;
+  /** True when a real PermissionsProvider is mounted (not the default context) */
+  _mounted: boolean;
   can: (key: string) => boolean;
   invalidate: () => void;
 }
 
-const PermissionsContext = createContext<PermissionsContextValue>({
+export const PermissionsContext = createContext<PermissionsContextValue>({
   permissions: {},
   ready: false,
+  _mounted: false,
   can: () => false,
   invalidate: () => {},
 });
@@ -45,22 +31,22 @@ export function PermissionsProvider({
   children: React.ReactNode;
 }) {
   const [permissions, setPermissions] = useState<PermissionsMap>({});
-  const [ready, setReady]             = useState(false);
+  const [ready, setReady] = useState(false);
 
-  // Use a ref to avoid re-running the effect when only `user` object ref changes
   const userId   = user.userId;
   const userRole = user.role;
-
-  // Track which userId we last fetched for — prevents double-fetch on strict mode
   const fetchedFor = useRef('');
 
-  const doFetch = () => {
+  function doFetch() {
     if (!userId) return;
 
     const token =
       typeof window !== 'undefined' ? localStorage.getItem('ailab_at') : null;
 
+    console.log(`[Permissions] doFetch — userId=${userId} role=${userRole} token=${token ? 'ok' : 'MISSING'}`);
+
     if (!token) {
+      console.warn('[Permissions] No token — setting ready with empty permissions');
       setPermissions({});
       setReady(true);
       return;
@@ -73,67 +59,73 @@ export function PermissionsProvider({
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(async (res) => {
+        console.log(`[Permissions] API response status: ${res.status}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json() as Promise<PermissionsMap>;
       })
       .then((data) => {
+        console.log('[Permissions] Received from API:', JSON.stringify(data));
         setPermissions(data);
         setReady(true);
       })
-      .catch(() => {
-        // Network/auth error — privileged roles get optimistic access
+      .catch((err) => {
+        console.error('[Permissions] Fetch failed:', err);
         const fallback =
           userRole === 'superadmin' || userRole === 'admin'
             ? { checklist: true, applications: true }
             : {};
+        console.warn('[Permissions] Using fallback:', JSON.stringify(fallback));
         setPermissions(fallback);
         setReady(true);
       });
-  };
+  }
 
   useEffect(() => {
+    console.log(`[Permissions] useEffect — userId=${userId} fetchedFor=${fetchedFor.current}`);
     if (!userId) {
       setPermissions({});
       setReady(false);
       fetchedFor.current = '';
       return;
     }
-    // Only fetch if we haven't already fetched for this user
-    if (fetchedFor.current === userId) return;
+    if (fetchedFor.current === userId) {
+      console.log('[Permissions] Already fetched for this user, skipping');
+      return;
+    }
     doFetch();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, userRole]);
 
   function can(key: string): boolean {
-    if (!ready) return false;
-    return permissions[key] === true;
+    const result = ready && permissions[key] === true;
+    console.log(`[Permissions] can(${key}) → ${result} (ready=${ready}, value=${permissions[key]})`);
+    return result;
   }
 
-  /** Call after changing a user's permissions so the sidebar re-fetches */
   function invalidate() {
+    console.log('[Permissions] invalidate called — will refetch');
     fetchedFor.current = '';
     doFetch();
   }
 
   return (
-    <PermissionsContext.Provider value={{ permissions, ready, can, invalidate }}>
+    <PermissionsContext.Provider
+      value={{ permissions, ready, _mounted: true, can, invalidate }}
+    >
       {children}
     </PermissionsContext.Provider>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-/** Consume the permissions for the currently logged-in user */
 export function usePermissions(): PermissionsContextValue {
-  return useContext(PermissionsContext);
+  const ctx = useContext(PermissionsContext);
+  if (!ctx._mounted) {
+    console.warn('[Permissions] usePermissions() called outside PermissionsProvider — returning default context');
+  }
+  return ctx;
 }
 
-/** For backwards compat — some pages call usePermissions(user). Keep working. */
-export function usePermissionsCompat(_user: AuthUser | null): PermissionsContextValue {
-  return useContext(PermissionsContext);
-}
-
-/** Kept for the user-detail page that calls this after toggling */
 export function invalidatePermissionsCache(): void {
-  // no-op in context model — use invalidate() from the context instead
+  // no-op shim
 }
