@@ -12,18 +12,26 @@ export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  // Backend sends `id`, we normalize to `userId` on save
   user: { id: string; email: string; name: string; role: string };
 }
 
 // Storage keys
-const AT_KEY = 'ailab_at';
-const RT_KEY = 'ailab_rt';
+const AT_KEY   = 'ailab_at';
+const RT_KEY   = 'ailab_rt';
 const USER_KEY = 'ailab_user';
 
 export function saveTokens(tokens: AuthTokens): void {
   localStorage.setItem(AT_KEY, tokens.accessToken);
   localStorage.setItem(RT_KEY, tokens.refreshToken);
-  localStorage.setItem(USER_KEY, JSON.stringify(tokens.user));
+  // Normalize: backend returns { id } but AuthUser expects { userId }
+  const user: AuthUser = {
+    userId: tokens.user.id,
+    email:  tokens.user.email,
+    name:   tokens.user.name,
+    role:   tokens.user.role as AuthUser['role'],
+  };
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function clearTokens(): void {
@@ -37,7 +45,19 @@ export function getAccessToken(): string | null {
 export function getStoredUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    // Handle sessions saved before this fix (field was `id` instead of `userId`)
+    const userId = parsed['userId'] ?? parsed['id'] ?? '';
+    if (!userId) return null;
+    const result = {
+      userId,
+      email: parsed['email'] ?? '',
+      name:  parsed['name']  ?? '',
+      role:  (parsed['role'] ?? 'client') as AuthUser['role'],
+    };
+    console.log('[auth] getStoredUser resolved userId=' + result.userId + ' role=' + result.role);
+    return result;
   } catch {
     return null;
   }

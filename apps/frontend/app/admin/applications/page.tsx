@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useI18n } from '../../../lib/i18n-context';
 import { useAuth } from '../../../hooks/useAuth';
 import { DashboardLayout } from '../../../components/ui/DashboardLayout';
+import { PermissionGate } from '../../../components/ui/PermissionGate';
 import { useFadeInUp, useStaggerIn } from '../../../hooks/useAnime';
-import { usePermissions } from '../../../lib/permissions-context';
 
 const ALLOWED_ROLES = ['superadmin', 'admin', 'client'];
 
@@ -290,19 +290,12 @@ function AiFeedbackPanel({ stats, apps, t }: {
   );
 }
 
-// ─── Inner Content (runs inside PermissionsProvider) ────────────────────────
-function ApplicationsContent() {
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function ApplicationsPage() {
   const { t } = useI18n();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(ALLOWED_ROLES);
 
-  const { can, ready: permsReady, permissions, _mounted } = usePermissions();
-  console.log(`[ApplicationsContent] render — _mounted=${_mounted} permsReady=${permsReady} permissions=${JSON.stringify(permissions)}`);
-  // While loading → hasAccess=true (show spinner, not lock screen)
-  // Once ready    → can() is the source of truth
-  const hasAccess  = !permsReady || can('applications');
-  const permChecked = permsReady;
-  console.log(`[ApplicationsContent] hasAccess=${hasAccess} permChecked=${permChecked}`);
 
   const [tab, setTab] = useState<Tab>('list');
   const [apps, setApps] = useState<Application[]>([]);
@@ -361,11 +354,11 @@ function ApplicationsContent() {
   }, []);
 
   useEffect(() => {
-    if (!authLoading && user && permsReady && hasAccess) {
+    if (!authLoading && user) {
       loadApps();
       loadBaseCV();
     }
-  }, [authLoading, user, hasAccess, permsReady, loadApps, loadBaseCV]);
+  }, [authLoading, user, loadApps, loadBaseCV]);
 
   async function saveBaseCV() {
     setCvSaving(true);
@@ -465,7 +458,7 @@ function ApplicationsContent() {
   };
 
   // ── Auth loading ────────────────────────────────────────────────────────────
-  if (authLoading || !user || !permsReady) {
+  if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <Spinner />
@@ -475,36 +468,10 @@ function ApplicationsContent() {
 
   const variant = (user.role === 'client' ? 'client' : 'admin') as 'admin' | 'client';
 
-  // ── Permission denied ───────────────────────────────────────────────────────
-  if (!hasAccess) {
-    return (
-      <DashboardLayout variant={variant} user={user} title={t.applications.pageTitle}>
-        <div className="min-h-[60vh] flex items-center justify-center px-6">
-          <div className="card p-10 text-center max-w-sm w-full space-y-4">
-            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800
-                            border border-slate-200 dark:border-slate-700
-                            flex items-center justify-center mx-auto text-slate-400">
-              <IconLock />
-            </div>
-            <p className="font-mono text-[13px] font-semibold text-slate-700 dark:text-slate-300">
-              {t.applications.accessDenied}
-            </p>
-            <p className="font-mono text-[11px] text-slate-400">
-              {t.applications.accessDeniedDesc}
-            </p>
-            <button onClick={() => router.back()}
-              className="btn-ghost text-[10px] py-2 px-4 mx-auto">
-              ← {t.common.back}
-            </button>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   // ── Main render ─────────────────────────────────────────────────────────────
   return (
     <DashboardLayout variant={variant} user={user} title={t.applications.pageTitle}>
+      <PermissionGate module="applications">
       <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
 
         {/* Header */}
@@ -824,29 +791,8 @@ function ApplicationsContent() {
           {toast.msg}
         </div>
       )}
+      </PermissionGate>
     </DashboardLayout>
   );
 }
 
-// ─── Page Shell (mounts auth + PermissionsProvider) ─────────────────────────
-// usePermissions() can only be called inside PermissionsProvider.
-// This shell handles auth, mounts the provider, then renders ApplicationsContent.
-export default function ApplicationsPage() {
-  const { user, loading: authLoading } = useAuth(ALLOWED_ROLES);
-
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <span className="w-6 h-6 border-2 border-slate-300 dark:border-slate-700 border-t-sky-500 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  const variant = (user.role === 'client' ? 'client' : 'admin') as 'admin' | 'client';
-
-  return (
-    <PermissionsProvider user={user}>
-      <ApplicationsContent />
-    </PermissionsProvider>
-  );
-}
