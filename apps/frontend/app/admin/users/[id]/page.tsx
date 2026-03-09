@@ -7,6 +7,7 @@ import { useI18n } from '../../../../lib/i18n-context';
 import { useAuth } from '../../../../hooks/useAuth';
 import { DashboardLayout } from '../../../../components/ui/DashboardLayout';
 import { useFadeInUp, useStaggerIn } from '../../../../hooks/useAnime';
+import { usePermissions, MODULE_PERMISSION_KEYS } from '../../../../hooks/usePermissions';
 
 const ADMIN_ROLES = ['superadmin', 'admin'];
 
@@ -56,22 +57,7 @@ function getHeaders(): Record<string, string> {
   return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
-// Permissions are stored in localStorage (backend doesn't have this column yet).
-// Key: ailab_perms_<userId>  Value: JSON { checklist: bool, applications: bool }
-const DEFAULT_PERMS = { checklist: true, applications: true };
-
-function loadPerms(userId: string): { checklist: boolean; applications: boolean } {
-  if (typeof window === 'undefined') return DEFAULT_PERMS;
-  try {
-    const raw = localStorage.getItem(`ailab_perms_${userId}`);
-    return raw ? { ...DEFAULT_PERMS, ...JSON.parse(raw) } : DEFAULT_PERMS;
-  } catch { return DEFAULT_PERMS; }
-}
-
-function savePerms(userId: string, perms: { checklist: boolean; applications: boolean }) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(`ailab_perms_${userId}`, JSON.stringify(perms));
-}
+// Permissions managed via usePermissions hook (see hooks/usePermissions.ts)
 
 const ROLE_STYLES: Record<string, string> = {
   superadmin: 'text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-400/30 bg-yellow-50 dark:bg-yellow-400/5',
@@ -127,6 +113,11 @@ export default function UserDetailPage() {
   const headerRef = useFadeInUp<HTMLDivElement>({ delay: 0, duration: 500 });
   const cardsRef = useStaggerIn<HTMLDivElement>({ delay: 100, stagger: 80 });
 
+  // Build a fake AuthUser for usePermissions — we need to read the target user's perms
+  // usePermissions reads from localStorage keyed by userId
+  const targetFakeUser = userId ? { userId, email: '', name: '', role: 'client' as const } : null;
+  const { permissions: targetPerms, toggle: togglePerm, ready: permsReady } = usePermissions(targetFakeUser);
+
   // Load user detail
   const load = useCallback(async () => {
     if (!userId) return;
@@ -134,8 +125,8 @@ export default function UserDetailPage() {
     try {
       const res = await fetch(`/api/users/${userId}`, { headers: getHeaders() });
       const data = await res.json() as UserDetail;
-      // Permissions live in localStorage (backend column not implemented yet)
-      data.permissions = loadPerms(userId);
+      // permissions will be injected from usePermissions below
+      data.permissions = {};
       setDetail(data);
     } catch {
       setDetail(null);
@@ -154,14 +145,12 @@ export default function UserDetailPage() {
     setTimeout(() => setToast(null), 3000);
   }
 
-  // Toggle permission — stored in localStorage (no backend endpoint needed)
+  // Toggle permission via usePermissions hook (persisted to localStorage)
   function togglePermission(permKey: string, current: boolean) {
     if (!isSuperAdmin || !detail) return;
     setPermLoading(permKey);
     try {
-      const newPerms = { ...detail.permissions, [permKey]: !current };
-      savePerms(userId, newPerms);
-      setDetail(prev => prev ? { ...prev, permissions: newPerms } : prev);
+      togglePerm(permKey, !current);
       showToast(
         `${permKey === 'checklist' ? 'Checklists' : 'Postulaciones'} ${!current ? 'habilitado' : 'deshabilitado'}`,
         'ok'
@@ -253,7 +242,7 @@ export default function UserDetailPage() {
 
             <div ref={cardsRef} className="grid gap-4 sm:grid-cols-2">
               {PERMISSION_MODULES.map(mod => {
-                const enabled = detail.permissions[mod.key as keyof typeof detail.permissions] ?? true;
+                const enabled = permsReady ? (targetPerms[mod.key] === true) : true;
                 return (
                   <div key={mod.key}
                     className={`card p-5 transition-all duration-200

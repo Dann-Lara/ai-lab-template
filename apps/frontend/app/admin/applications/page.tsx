@@ -6,6 +6,7 @@ import { useI18n } from '../../../lib/i18n-context';
 import { useAuth } from '../../../hooks/useAuth';
 import { DashboardLayout } from '../../../components/ui/DashboardLayout';
 import { useFadeInUp, useStaggerIn } from '../../../hooks/useAnime';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 const ALLOWED_ROLES = ['superadmin', 'admin', 'client'];
 
@@ -39,13 +40,7 @@ function isCVComplete(cv: BaseCV) {
   return !!(cv.fullName && cv.email && (cv.experience || cv.summary));
 }
 
-function loadPerms(userId: string): { checklist: boolean; applications: boolean } {
-  if (typeof window === 'undefined') return { checklist: true, applications: true };
-  try {
-    const raw = localStorage.getItem(`ailab_perms_${userId}`);
-    return raw ? { checklist: true, applications: true, ...JSON.parse(raw) as object } : { checklist: true, applications: true };
-  } catch { return { checklist: true, applications: true }; }
-}
+
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 const IconWarning = () => (
@@ -309,6 +304,7 @@ export default function ApplicationsPage() {
 
   const [permChecked, setPermChecked] = useState(false);
   const [hasAccess, setHasAccess] = useState(true);
+  const { can, ready: permsReady } = usePermissions(user);
 
   const [tab, setTab] = useState<Tab>('list');
   const [apps, setApps] = useState<Application[]>([]);
@@ -334,20 +330,12 @@ export default function ApplicationsPage() {
     setTimeout(() => setToast(null), 3500);
   }
 
-  // ── Check permissions ───────────────────────────────────────────────────────
+  // ── Check permissions via usePermissions hook ───────────────────────────────
   useEffect(() => {
-    if (authLoading || !user) return;
-    // Superadmins and admins always have access
-    if (user.role === 'superadmin' || user.role === 'admin') {
-      setHasAccess(true);
-      setPermChecked(true);
-      return;
-    }
-    // For clients, check localStorage permissions
-    const perms = loadPerms(user.id);
-    setHasAccess(perms.applications !== false);
+    if (authLoading || !user || !permsReady) return;
+    setHasAccess(can('applications'));
     setPermChecked(true);
-  }, [authLoading, user]);
+  }, [authLoading, user, permsReady, can]);
 
   const loadApps = useCallback(async () => {
     setAppsLoading(true);
@@ -463,7 +451,7 @@ export default function ApplicationsPage() {
   };
 
   // ── Auth loading ────────────────────────────────────────────────────────────
-  if (authLoading || !user || !permChecked) {
+  if (authLoading || !user || !permChecked || !permsReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <Spinner />

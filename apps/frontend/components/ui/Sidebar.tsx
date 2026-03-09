@@ -148,8 +148,12 @@ export function Sidebar({ variant, user, userPermissions = {} }: SidebarProps) {
 
   function canAccess(item: NavItem) {
     if (item.adminOnly && !isAdmin) return false;
-    if (item.permission && !isSuperAdmin) {
-      return userPermissions[item.permission] !== false;
+    // Privileged users (admin, superadmin) always have access to all modules
+    if (isAdmin) return true;
+    // For regular clients: check permission map explicitly
+    // If the key is absent (permissions not yet loaded), deny — prevents flash
+    if (item.permission) {
+      return userPermissions[item.permission] === true;
     }
     return true;
   }
