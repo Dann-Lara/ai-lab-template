@@ -56,6 +56,23 @@ function getHeaders(): Record<string, string> {
   return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
+// Permissions are stored in localStorage (backend doesn't have this column yet).
+// Key: ailab_perms_<userId>  Value: JSON { checklist: bool, applications: bool }
+const DEFAULT_PERMS = { checklist: true, applications: true };
+
+function loadPerms(userId: string): { checklist: boolean; applications: boolean } {
+  if (typeof window === 'undefined') return DEFAULT_PERMS;
+  try {
+    const raw = localStorage.getItem(`ailab_perms_${userId}`);
+    return raw ? { ...DEFAULT_PERMS, ...JSON.parse(raw) } : DEFAULT_PERMS;
+  } catch { return DEFAULT_PERMS; }
+}
+
+function savePerms(userId: string, perms: { checklist: boolean; applications: boolean }) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(`ailab_perms_${userId}`, JSON.stringify(perms));
+}
+
 const ROLE_STYLES: Record<string, string> = {
   superadmin: 'text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-400/30 bg-yellow-50 dark:bg-yellow-400/5',
   admin: 'text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-400/30 bg-sky-50 dark:bg-sky-400/5',
@@ -70,17 +87,23 @@ function ToggleSwitch({
 }: { enabled: boolean; onChange: (v: boolean) => void; loading?: boolean }) {
   return (
     <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
       onClick={() => !loading && onChange(!enabled)}
       disabled={loading}
-      aria-pressed={enabled}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200
-                  focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2
-                  ${enabled ? 'bg-sky-500' : 'bg-slate-200 dark:bg-slate-700'}
-                  ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full
+                  border-2 border-transparent
+                  transition-colors duration-200 ease-in-out
+                  focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2
+                  ${enabled ? 'bg-sky-500' : 'bg-slate-300 dark:bg-slate-600'}
+                  ${loading ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200
-                    ${enabled ? 'translate-x-6' : 'translate-x-1'}`}
+        aria-hidden="true"
+        className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-md
+                    ring-0 transition-transform duration-200 ease-in-out
+                    ${enabled ? 'translate-x-4' : 'translate-x-0'}`}
       />
     </button>
   );
@@ -111,10 +134,8 @@ export default function UserDetailPage() {
     try {
       const res = await fetch(`/api/users/${userId}`, { headers: getHeaders() });
       const data = await res.json() as UserDetail;
-      // Normalize: backend may not return permissions yet — default both to true
-      if (!data.permissions) {
-        data.permissions = { checklist: true, applications: true };
-      }
+      // Permissions live in localStorage (backend column not implemented yet)
+      data.permissions = loadPerms(userId);
       setDetail(data);
     } catch {
       setDetail(null);
@@ -133,22 +154,18 @@ export default function UserDetailPage() {
     setTimeout(() => setToast(null), 3000);
   }
 
-  // Toggle permission
-  async function togglePermission(permKey: string, current: boolean) {
+  // Toggle permission — stored in localStorage (no backend endpoint needed)
+  function togglePermission(permKey: string, current: boolean) {
     if (!isSuperAdmin || !detail) return;
     setPermLoading(permKey);
     try {
-      const res = await fetch(`/api/users/${userId}/permissions`, {
-        method: 'PATCH',
-        headers: getHeaders(),
-        body: JSON.stringify({ permission: permKey, enabled: !current }),
-      });
-      if (!res.ok) throw new Error();
-      setDetail(prev => prev ? {
-        ...prev,
-        permissions: { ...prev.permissions, [permKey]: !current },
-      } : prev);
-      showToast(`Permiso "${permKey}" ${!current ? 'habilitado' : 'deshabilitado'}`, 'ok');
+      const newPerms = { ...detail.permissions, [permKey]: !current };
+      savePerms(userId, newPerms);
+      setDetail(prev => prev ? { ...prev, permissions: newPerms } : prev);
+      showToast(
+        `${permKey === 'checklist' ? 'Checklists' : 'Postulaciones'} ${!current ? 'habilitado' : 'deshabilitado'}`,
+        'ok'
+      );
     } catch {
       showToast('Error al actualizar permiso', 'err');
     } finally {

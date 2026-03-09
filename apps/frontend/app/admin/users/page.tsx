@@ -248,11 +248,11 @@ export default function AdminUsersPage() {
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/users/${u.id}`}
-                        className="font-mono text-[10px] uppercase tracking-widest
+                        className="inline-flex items-center justify-center gap-1
+                                   font-mono text-[10px] uppercase tracking-widest whitespace-nowrap
                                    text-sky-600 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300
-                                   border border-sky-200 dark:border-sky-400/30 rounded px-2.5 py-1
-                                   hover:bg-sky-50 dark:hover:bg-sky-400/10 transition-all
-                                   flex items-center gap-1 whitespace-nowrap"
+                                   border border-sky-200 dark:border-sky-400/30 rounded px-3 py-1.5
+                                   hover:bg-sky-50 dark:hover:bg-sky-400/10 transition-all"
                       >
                         Ver →
                       </Link>
