@@ -7,7 +7,6 @@ import { useI18n } from '../../../../lib/i18n-context';
 import { useAuth } from '../../../../hooks/useAuth';
 import { DashboardLayout } from '../../../../components/ui/DashboardLayout';
 import { useFadeInUp, useStaggerIn } from '../../../../hooks/useAnime';
-import { invalidatePermissionsCache } from '../../../../hooks/usePermissions';
 
 const ADMIN_ROLES = ['superadmin', 'admin'];
 
@@ -151,8 +150,6 @@ export default function UserDetailPage() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const updated = await res.json() as Record<string, boolean>;
-      // Invalidate permissions cache so the sidebar refreshes on next render
-      invalidatePermissionsCache(detail.id);
       // Update local state immediately with the server response
       setDetail(prev => prev ? { ...prev, permissions: { ...prev.permissions, ...updated } } : prev);
       showToast(

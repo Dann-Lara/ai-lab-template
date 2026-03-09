@@ -6,7 +6,7 @@ import { useI18n } from '../../../lib/i18n-context';
 import { useAuth } from '../../../hooks/useAuth';
 import { DashboardLayout } from '../../../components/ui/DashboardLayout';
 import { useFadeInUp, useStaggerIn } from '../../../hooks/useAnime';
-import { usePermissions } from '../../../hooks/usePermissions';
+import { usePermissions } from '../../../lib/permissions-context';
 
 const ALLOWED_ROLES = ['superadmin', 'admin', 'client'];
 
@@ -296,7 +296,7 @@ export default function ApplicationsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth(ALLOWED_ROLES);
 
-  const { can, ready: permsReady } = usePermissions(user);
+  const { can, ready: permsReady } = usePermissions();
   // Derive access directly — no separate useEffect needed.
   // permsReady guards the loading state; once ready, can() is the source of truth.
   const hasAccess  = !permsReady || can('applications');

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useI18n } from '../../lib/i18n-context';
+import { usePermissions } from '../../lib/permissions-context';
 import type { AuthUser } from '../../lib/auth';
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
@@ -60,11 +61,11 @@ interface NavItem {
 interface SidebarProps {
   variant: 'admin' | 'client';
   user: AuthUser;
-  userPermissions?: Record<string, boolean>;
 }
 
 // ─── Sidebar ─────────────────────────────────────────────────────────────────
-export function Sidebar({ variant, user, userPermissions = {} }: SidebarProps) {
+export function Sidebar({ variant, user }: SidebarProps) {
+  const { permissions, ready: permsReady } = usePermissions();
   const { t } = useI18n();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -146,15 +147,14 @@ export function Sidebar({ variant, user, userPermissions = {} }: SidebarProps) {
     return pathname.startsWith(href);
   }
 
-  function canAccess(item: NavItem) {
+  function canAccess(item: NavItem): boolean {
     if (item.adminOnly && !isAdmin) return false;
-    // Privileged users (admin, superadmin) always have access to all modules
+    // Admins and superadmins always see every module
     if (isAdmin) return true;
-    // For regular clients: check permission map explicitly
-    // If the key is absent (permissions not yet loaded), deny — prevents flash
-    if (item.permission) {
-      return userPermissions[item.permission] === true;
-    }
+    // While permissions are loading, hide permission-gated items to avoid flash
+    if (!permsReady) return !item.permission;
+    // Client: show item only if explicitly allowed
+    if (item.permission) return permissions[item.permission] === true;
     return true;
   }
 
