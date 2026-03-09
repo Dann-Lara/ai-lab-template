@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useI18n } from '../../../lib/i18n-context';
 import { useAuth } from '../../../hooks/useAuth';
-import { Navbar } from '../../../components/ui/Navbar';
+import { DashboardLayout } from '../../../components/ui/DashboardLayout';
 import { TaskCard } from '../../../components/checklists/TaskCard';
 import { ProgressRing, BarChart } from '../../../components/checklists/ProgressRing';
 import {
@@ -134,11 +134,11 @@ export default function ChecklistDetailPage() {
   const completedTasks = checklist.items.filter((i) => i.status === 'completed');
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <Navbar variant={user?.role === 'client' ? 'client' : 'admin'} />
+    <DashboardLayout variant={user?.role === 'client' ? 'client' : 'admin'} user={user!} title={t.nav.checklist}>
+
 
       {/* ── Same max-width as list page ── */}
-      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-20 pb-20">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-8 pb-20">
 
         {/* Back link */}
         <div className="pt-6 mb-6">
@@ -386,6 +386,6 @@ export default function ChecklistDetailPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useI18n } from '../../lib/i18n-context';
 import { useAuth } from '../../hooks/useAuth';
-import { Navbar } from '../../components/ui/Navbar';
+import { DashboardLayout } from '../../components/ui/DashboardLayout';
 import { ProgressRing, BarChart } from '../../components/checklists/ProgressRing';
 import { checklistsApi, type Checklist, type ChecklistStatus, type ProgressData } from '../../lib/checklists';
 
@@ -311,10 +311,8 @@ export default function ChecklistsListPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <Navbar variant={user.role === 'client' ? 'client' : 'admin'} />
-
-      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-20 pb-16">
+    <DashboardLayout variant={user.role === 'client' ? 'client' : 'admin'} user={user} title={t.nav.checklist}>
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-8 pb-16">
 
         {/* Header */}
         <div className="py-10 border-b border-slate-200 dark:border-slate-800/60 mb-10
@@ -409,6 +407,6 @@ export default function ChecklistsListPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

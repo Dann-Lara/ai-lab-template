@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '../../../lib/i18n-context';
 import { useAuth } from '../../../hooks/useAuth';
-import { Navbar } from '../../../components/ui/Navbar';
+import { DashboardLayout } from '../../../components/ui/DashboardLayout';
 import { StepIndicator } from '../../../components/checklists/StepIndicator';
 import { IconChevronLeft } from '../../../components/checklists/Icons';
 import { checklistsApi, type ChecklistParams, type TaskDraft } from '../../../lib/checklists';
@@ -152,10 +152,10 @@ export default function NewChecklistPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <Navbar variant={user.role === 'client' ? 'client' : 'admin'} />
+    <DashboardLayout variant={user.role === 'client' ? 'client' : 'admin'} user={user} title={t.nav.checklist}>
 
-      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-20 pb-20">
+
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-8 pb-20">
         <div className="py-10 border-b border-slate-200 dark:border-slate-800/60 mb-10
                         flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
@@ -212,6 +212,6 @@ export default function NewChecklistPage() {
         onRegen={() => void handleRegen()}
         onClose={() => setRegenModal(false)}
       />
-    </div>
+    </DashboardLayout>
   );
 }

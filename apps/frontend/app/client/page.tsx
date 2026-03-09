@@ -1,6 +1,6 @@
 'use client';
 
-import { Navbar } from '../../components/ui/Navbar';
+import { DashboardLayout } from '../../components/ui/DashboardLayout';
 import { AiGenerator } from '../../components/ai/AiGenerator';
 import { AiSummarizer } from '../../components/ai/AiSummarizer';
 import { useI18n } from '../../lib/i18n-context';
@@ -25,10 +25,8 @@ export default function ClientDashboard(): React.JSX.Element {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <Navbar variant="client" />
-
-      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-20 pb-16">
+    <DashboardLayout variant="client" user={user} title={t.nav.dashboard}>
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-8 pb-16">
 
         {/* Header */}
         <div className="py-10 border-b border-slate-200 dark:border-slate-800/60 mb-10
@@ -107,6 +105,6 @@ export default function ClientDashboard(): React.JSX.Element {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

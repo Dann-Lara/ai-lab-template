@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Navbar } from '../../../components/ui/Navbar';
+import { DashboardLayout } from '../../../components/ui/DashboardLayout';
 import { useAuth } from '../../../hooks/useAuth';
 import { useI18n } from '../../../lib/i18n-context';
 import Link from 'next/link';
@@ -73,10 +73,8 @@ export default function AdminProfilePage() {
     : 'text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-400/30 bg-sky-50 dark:bg-sky-400/5';
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <Navbar variant="admin" />
-
-      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-20 pb-16">
+    <DashboardLayout variant="admin" user={user} title={t.nav.profile}>
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-8 pb-16">
 
         {/* ── Header ── */}
         <div className="py-10 border-b border-slate-200 dark:border-slate-800/60 mb-10">
@@ -272,6 +270,6 @@ export default function AdminProfilePage() {
       </div>
 
       {showTelegramHelp && <TelegramHelpModal onClose={() => setShowTelegramHelp(false)} />}
-    </div>
+    </DashboardLayout>
   );
 }

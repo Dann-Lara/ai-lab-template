@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { useI18n } from '../../../lib/i18n-context';
 import { useAuth } from '../../../hooks/useAuth';
-import { Navbar } from '../../../components/ui/Navbar';
+import { DashboardLayout } from '../../../components/ui/DashboardLayout';
 
 const ADMIN_ROLES = ['superadmin', 'admin'];
 
@@ -122,10 +123,8 @@ export default function AdminUsersPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <Navbar variant="admin" />
-
-      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-20 pb-16">
+    <DashboardLayout variant="admin" user={user} title={t.nav.users}>
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-8 pb-16">
 
         {/* Header */}
         <div className="py-10 border-b border-slate-200 dark:border-slate-800/60 mb-10
@@ -188,7 +187,7 @@ export default function AdminUsersPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800">
-                  {[t.users.name, t.users.email, t.users.role, t.users.status, t.users.createdAt, t.users.actions].map((h) => (
+                  {[t.users.name, t.users.email, t.users.role, t.users.status, t.users.createdAt, t.users.actions, 'Detalle'].map((h) => (
                     <th key={h} className="text-left px-4 py-3 font-mono text-[9px] uppercase tracking-widest text-slate-400">
                       {h}
                     </th>
@@ -198,7 +197,7 @@ export default function AdminUsersPage() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center font-mono text-[11px] text-slate-400">
+                    <td colSpan={7} className="px-4 py-12 text-center font-mono text-[11px] text-slate-400">
                       {t.users.noUsers}
                     </td>
                   </tr>
@@ -244,6 +243,19 @@ export default function AdminUsersPage() {
                           {actionLoading === u.id ? <Spinner /> : (u.isActive ? t.users.deactivate : t.users.activate)}
                         </button>
                       )}
+                    </td>
+                    {/* ── Ver detalle link ── */}
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/users/${u.id}`}
+                        className="font-mono text-[10px] uppercase tracking-widest
+                                   text-sky-600 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300
+                                   border border-sky-200 dark:border-sky-400/30 rounded px-2.5 py-1
+                                   hover:bg-sky-50 dark:hover:bg-sky-400/10 transition-all
+                                   flex items-center gap-1 whitespace-nowrap"
+                      >
+                        Ver →
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -336,7 +348,7 @@ export default function AdminUsersPage() {
               {confirmToggle.active ? t.users.deactivate : t.users.activate}
             </h3>
             <p className="font-mono text-[11px] text-slate-500">
-              <span suppressHydrationWarning>{confirmToggle.active ? t.users.confirmDeactivate : `Activar a`}</span>{' '}
+              <span suppressHydrationWarning>{confirmToggle.active ? t.users.confirmDeactivate : 'Activar a'}</span>{' '}
               <span className="text-slate-800 dark:text-slate-200 font-semibold">{confirmToggle.name}</span>?
             </p>
             <div className="flex gap-2">
@@ -356,6 +368,6 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardLayout>
   );
 }
