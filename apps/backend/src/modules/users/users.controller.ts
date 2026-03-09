@@ -57,7 +57,6 @@ export class UsersController {
   async getMyPermissions(@CurrentUser() user: JwtUser): Promise<PermissionsMap> {
     const full = await this.usersService.findOne(user.userId);
     const result = this.usersService.getEffectivePermissions(full);
-    console.log(`[UsersController] GET me/permissions userId=${user.userId} role=${user.role} result=${JSON.stringify(result)}`);
     return result;
   }
 

@@ -227,7 +227,7 @@ export class ApplicationsService {
       '- skills: comma-separated list\n' +
       '- languages: e.g. Spanish (native), English (C1)\n' +
       '- All values must be plain strings\n' +
-      '- Your entire response must start with { and end with }';
+      '- Your entire response must start with {{ and end with }}';
 
     const prompt = 'Extract all CV information from this text and return as JSON:\n\n' + esc(truncated);
 

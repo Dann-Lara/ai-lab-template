@@ -56,7 +56,6 @@ export function getStoredUser(): AuthUser | null {
       name:  parsed['name']  ?? '',
       role:  (parsed['role'] ?? 'client') as AuthUser['role'],
     };
-    console.log('[auth] getStoredUser resolved userId=' + result.userId + ' role=' + result.role);
     return result;
   } catch {
     return null;

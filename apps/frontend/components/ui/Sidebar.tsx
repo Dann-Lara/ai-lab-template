@@ -151,12 +151,10 @@ export function Sidebar({ variant, user }: SidebarProps) {
     if (item.adminOnly && !isAdmin) return false;
     if (isAdmin) return true;
     if (!permsReady) {
-      console.log(`[Sidebar] canAccess(${item.key}) → WAITING (permsReady=false)`);
       return !item.permission;
     }
     if (item.permission) {
       const allowed = permissions[item.permission] === true;
-      console.log(`[Sidebar] canAccess(${item.key}) perm=${item.permission} → ${allowed} | permissions:`, JSON.stringify(permissions));
       return allowed;
     }
     return true;
