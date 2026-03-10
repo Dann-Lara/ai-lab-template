@@ -63,9 +63,10 @@ interface Props {
   initialCV: BaseCV;
   onSaved: (cv: BaseCV) => void;
   t: { applications: Record<string, string> };
+  lang: string;
 }
 
-export function BaseCVForm({ initialCV, onSaved, t }: Props) {
+export function BaseCVForm({ initialCV, onSaved, t, lang }: Props) {
   const ta = t.applications;
 
   // Sync with parent when initialCV changes (e.g. after loadBaseCV resolves)
@@ -114,7 +115,7 @@ export function BaseCVForm({ initialCV, onSaved, t }: Props) {
       const res = await fetch('/api/applications/base-cv/evaluate', {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, lang }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as CvEvalResult;

@@ -25,7 +25,7 @@ function Toast({ msg, type }: { msg: string; type: 'ok' | 'err' }) {
 }
 
 export default function ApplicationsPage() {
-  const { t }  = useI18n();
+  const { t, locale }  = useI18n();
   const { user, loading: authLoading } = useAuth(ALLOWED_ROLES);
 
   const [tab, setTab]         = useState<Tab>('base-cv');
@@ -160,6 +160,7 @@ export default function ApplicationsPage() {
           {tab === 'base-cv' && (
             <BaseCVForm
               initialCV={baseCV}
+              lang={locale}
               onSaved={saved => {
                 setBaseCV(saved);
                 showToast(t.applications.toastCVSaved, 'ok');

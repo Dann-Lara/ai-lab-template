@@ -83,6 +83,8 @@ export class EvaluateCvDto {
   @ApiPropertyOptional() @IsOptional() @IsString() skills?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() languages?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() certifications?: string;
+  /** UI language — 'es' or 'en'. AI feedback will be in this language. */
+  @ApiPropertyOptional() @IsOptional() @IsString() lang?: string;
 }
 
 export interface CvEvaluationResult {

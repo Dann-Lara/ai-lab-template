@@ -247,6 +247,7 @@ export class ApplicationsService {
       'TASK 2 — EVALUATE each field for ATS quality and set a one-sentence hint if incomplete (max 12 words), or empty string "" if ok:\n' +
       '  fieldFeedback keys: summary, experience, skills, education, contact, languages, certifications, linkedIn\n' +
       '  contact = fullName + email + phone + location combined\n\n' +
+      'Write all fieldFeedback values in ' + ((dto as any).lang === 'en' ? 'English' : 'Spanish') + '.\n' +
       'Return ONLY raw JSON — no markdown, no backticks:\n' +
       '{{ "fullName":"","email":"","phone":"","location":"","linkedIn":"","summary":"","experience":"","education":"","skills":"","languages":"","certifications":"", ' +
       '"fieldFeedback":{{"summary":"","experience":"","skills":"","education":"","contact":"","languages":"","certifications":"","linkedIn":""}} }}';
@@ -292,63 +293,83 @@ export class ApplicationsService {
   //   linkedIn    5pts — URL present and looks valid
   // Total: 100pts. Approved when >= 85.
   async evaluateBaseCV(dto: EvaluateCvDto): Promise<CvEvaluationResult> {
+    const isEs = (dto.lang ?? 'es') === 'es';
+
+    // Build compact CV block — keep it short so the response budget is for JSON not input
     const cvText =
-      'FULL NAME: ' + esc(dto.fullName) + '\n' +
-      'EMAIL: ' + esc(dto.email) + '\n' +
-      'PHONE: ' + esc(dto.phone ?? '') + '\n' +
-      'LOCATION: ' + esc(dto.location ?? '') + '\n' +
-      'LINKEDIN: ' + esc(dto.linkedIn ?? '') + '\n\n' +
-      'SUMMARY:\n' + esc(dto.summary) + '\n\n' +
-      'EXPERIENCE:\n' + esc(dto.experience) + '\n\n' +
-      'EDUCATION:\n' + esc(dto.education ?? '') + '\n\n' +
-      'SKILLS:\n' + esc(dto.skills ?? '') + '\n\n' +
-      'LANGUAGES:\n' + esc(dto.languages ?? '') + '\n\n' +
-      'CERTIFICATIONS:\n' + esc(dto.certifications ?? '');
+      'NAME: '   + esc(dto.fullName) + ' | EMAIL: ' + esc(dto.email) +
+      ' | PHONE: ' + esc(dto.phone ?? '') + ' | LOC: ' + esc(dto.location ?? '') +
+      ' | LI: '  + esc(dto.linkedIn ?? '') + '\n' +
+      'SUMMARY: '  + esc((dto.summary        ?? '').slice(0, 600)) + '\n' +
+      'EXPERIENCE: ' + esc((dto.experience   ?? '').slice(0, 1200)) + '\n' +
+      'EDUCATION: ' + esc((dto.education     ?? '').slice(0, 400)) + '\n' +
+      'SKILLS: '   + esc((dto.skills         ?? '').slice(0, 300)) + '\n' +
+      'LANGUAGES: ' + esc((dto.languages     ?? '').slice(0, 200)) + '\n' +
+      'CERTS: '    + esc((dto.certifications ?? '').slice(0, 300));
 
-    // Evaluation rubric (fixed, non-negotiable):
-    // summary 20 | experience 30 | skills 15 | education 10 | contact 10 | languages 5 | certifications 5 | linkedIn 5
-    // Feedback rules: max 1 actionable sentence per field, only if genuinely missing/incomplete.
-    // If a section is acceptable, fieldFeedback value must be an empty string "".
-    // This prevents infinite improvement loops.
+    // Rubric: summary20|experience30|skills15|education10|contact10|languages5|certs5|linkedin5
+    // Each fieldFeedback value: ONE short sentence in the requested language, or "" if ok.
+    // CRITICAL: keep feedback under 12 words each so the total JSON fits in the token budget.
+    const lang = isEs ? 'Spanish' : 'English';
     const systemMessage =
-      'You are an ATS CV evaluator. Score this CV using the fixed rubric below. Do not invent criteria.\n' +
-      'RUBRIC (total 100 pts):\n' +
-      '- summary: 20 pts. Full points if: min 3 sentences, contains job title, years of experience, and value proposition.\n' +
-      '- experience: 30 pts. Full points if: min 2 complete roles each with company, title, YYYY–YYYY dates, and min 2 quantified achievements.\n' +
-      '- skills: 15 pts. Full points if: min 6 technical skills listed.\n' +
-      '- education: 10 pts. Full points if: institution + degree + graduation year present.\n' +
-      '- contact: 10 pts. Full points if: fullName, email, phone AND location are all non-empty.\n' +
-      '- languages: 5 pts. Full points if: at least one language with level (e.g. English C1).\n' +
-      '- certifications: 5 pts. Full points if: at least one entry with name and year.\n' +
-      '- linkedIn: 5 pts. Full points if: a linkedin.com URL is present.\n\n' +
+      'You are a strict ATS CV scorer. Reply ONLY with raw JSON — zero markdown, zero explanation.\n' +
+      'Language for all text fields: ' + lang + '\n\n' +
+      'RUBRIC (100 pts total — be strict, do not round up):\n' +
+      'contact:10 — fullName+email+phone+location all present\n' +
+      'linkedIn:5 — valid linkedin.com URL present\n' +
+      'summary:20 — min 3 sentences, has job title + years + value prop\n' +
+      'experience:30 — min 2 roles each with company+title+YYYY-YYYY+2 quantified achievements\n' +
+      'skills:15 — min 6 technical skills listed\n' +
+      'education:10 — institution+degree+year\n' +
+      'languages:5 — at least one with level\n' +
+      'certifications:5 — at least one with name+year\n\n' +
       'RULES:\n' +
-      '1. If a criterion is met, award full points and set fieldFeedback to "".\n' +
-      '2. If a criterion is partially met, deduct proportionally and write ONE sentence of feedback (max 15 words).\n' +
-      '3. If a criterion is not met at all, award 0 and write ONE sentence of feedback (max 15 words).\n' +
-      '4. Do not suggest improvements beyond the rubric. Do not hallucinate missing info.\n' +
-      '5. Respond with ONLY raw JSON — no markdown, no backticks, no explanation.\n' +
-      'JSON shape: {{ "score": <0-100>, "approved": <true if score>=85>, "summary": "<max 20 words>", ' +
-      '"fieldFeedback": {{ "summary": "", "experience": "", "skills": "", "education": "", ' +
-      '"contact": "", "languages": "", "certifications": "", "linkedIn": "" }} }}';
+      '- Full pts if ALL criteria met; 0 if nothing; partial otherwise\n' +
+      '- fieldFeedback: empty string "" if section is ok; else ONE sentence max 10 words in ' + lang + '\n' +
+      '- summary field in output: ONE sentence max 12 words in ' + lang + '\n' +
+      '- Do NOT invent or assume missing info\n\n' +
+      'OUTPUT — exactly this JSON shape, no extra keys:\n' +
+      '{"score":0,"approved":false,"summary":"","fieldFeedback":{"contact":"","linkedIn":"","summary":"","experience":"","skills":"","education":"","languages":"","certifications":""}}';
 
-    const prompt = 'Score this CV:\n\n' + cvText;
+    const prompt = 'SCORE THIS CV:\n' + cvText;
 
     return withRetry(async () => {
       const { text } = await generateText({
         prompt,
         systemMessage,
-        maxTokens: 600,
+        maxTokens: 500,
         temperature: 0,
       });
+
+      this.logger.debug('[evaluateBaseCV] raw AI response: ' + text.slice(0, 400));
+
       const parsed = extractJson<CvEvaluationResult>(text);
-      if (!parsed || typeof parsed.score !== 'number') {
-        throw new Error('AI returned invalid evaluation response');
+
+      // Graceful recovery: if we got a score but the JSON was otherwise malformed,
+      // build a safe partial result rather than throwing and retrying.
+      if (!parsed) {
+        // Try to salvage just the score from the raw text
+        const scoreMatch = text.match(/"score"\s*:\s*(\d+)/);
+        if (scoreMatch) {
+          const score = Math.min(100, Math.max(0, parseInt(scoreMatch[1], 10)));
+          this.logger.warn('[evaluateBaseCV] JSON parse failed but salvaged score=' + score);
+          return { score, approved: score >= 85, summary: '', fieldFeedback: {} };
+        }
+        this.logger.error('[evaluateBaseCV] Unparseable response: ' + text.slice(0, 300));
+        throw new Error('AI returned unparseable evaluation response');
       }
+
+      if (typeof parsed.score !== 'number') {
+        throw new Error('AI evaluation missing score field');
+      }
+
       return {
-        score: Math.min(100, Math.max(0, Math.round(parsed.score))),
-        approved: parsed.score >= 85,
-        summary: parsed.summary ?? '',
-        fieldFeedback: parsed.fieldFeedback ?? {},
+        score:         Math.min(100, Math.max(0, Math.round(parsed.score))),
+        approved:      parsed.score >= 85,
+        summary:       typeof parsed.summary === 'string' ? parsed.summary : '',
+        fieldFeedback: (parsed.fieldFeedback && typeof parsed.fieldFeedback === 'object')
+                         ? parsed.fieldFeedback
+                         : {},
       };
     }, 2, 1500);
   }
