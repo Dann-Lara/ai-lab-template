@@ -124,4 +124,15 @@ export class ApplicationsController {
   ) {
     return this.svc.answerInterviewQuestions(user.userId, id, dto.questions, dto.lang ?? 'es', user.role);
   }
+
+  @Post(':id/translate-cv')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Adapt saved English CV to Spanish' })
+  translateCv(
+    @CurrentUser() user: JwtUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.adaptCvToSpanish(user.userId, id);
+  }
 }

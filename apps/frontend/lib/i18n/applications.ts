@@ -72,6 +72,12 @@ export const applicationsES = {
     // Generic
     save: 'Guardar',
     cancel: 'Cancelar',
+    generateSpanishBtn: 'Adaptar al español',
+    generatingES: 'Adaptando al español...',
+    generateSpanishHint: 'Adapta el CV en inglés al español',
+    saveFirstHint: 'Guardá primero para habilitar',
+    doneBtn: 'Listo — ver postulaciones →',
+    generatingStep3: '3. Generando CV ATS en inglés...',
 
     // New application tab
     cvRequiredTitle: 'CV Base requerido',
@@ -270,6 +276,12 @@ export const applicationsEN = {
     // Generic
     save: 'Save',
     cancel: 'Cancel',
+    generateSpanishBtn: 'Adapt to Spanish',
+    generatingES: 'Adapting to Spanish...',
+    generateSpanishHint: 'Adapts the English CV to Spanish',
+    saveFirstHint: 'Save first to enable',
+    doneBtn: 'Done — view applications →',
+    generatingStep3: '3. Generating ATS CV in English...',
 
     cvRequiredTitle: 'Base CV required',
     cvRequiredDesc: 'Complete your Base CV before creating an application. AI will use it to generate a 100% ATS-optimized CV tailored to each offer.',

@@ -29,35 +29,37 @@ const IconLink = () => (
   </svg>
 );
 
-// ── ATS PDF — no browser chrome (title, URL, date, page numbers) ──────────────
-// @page margin:0 + body padding removes ALL browser-injected headers/footers.
-// Chrome/Safari/Firefox all respect this for print.
-function printATS(cvText: string, position: string, company: string) {
+// ── ATS PDF — section-aware, no browser chrome ───────────────────────────────
+// @page margin:0 + body padding removes URL/title/date/page-number browser headers.
+// Each ALL-CAPS section is wrapped in a div with page-break-inside:avoid so
+// section headers never orphan at the bottom of a page.
+function printATS(cvText: string, lang: 'es' | 'en', position: string, company: string) {
   const win = window.open('', '_blank');
   if (!win) return;
+
+  const sectionRx = /^(CONTACT(?:O)?|SUMMARY|RESUMEN|EXPERIENCE|EXPERIENCIA|EDUCATION|EDUCACI[OÓ]N|SKILLS|HABILIDADES|LANGUAGES|IDIOMAS|CERTIFICATIONS|CERTIFICACIONES)$/m;
+  const lines = cvText.split('\n');
+  let html = '';
+  let buf = '';
+  const flush = () => {
+    if (buf.trim()) html += `<div class="s"><pre>${buf.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre></div>`;
+    buf = '';
+  };
+  for (const line of lines) {
+    if (sectionRx.test(line.trim())) { flush(); buf = line + '\n'; }
+    else buf += line + '\n';
+  }
+  flush();
+
   win.document.write(`<!DOCTYPE html>
-<html><head><meta charset="UTF-8"/><title></title>
+<html lang="${lang}"><head><meta charset="UTF-8"/><title></title>
 <style>
-@page { margin: 0; size: Letter; }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 11pt;
-  line-height: 1.45;
-  color: #000;
-  background: #fff;
-  padding: 0.75in;
-}
-pre {
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 11pt;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  line-height: 1.45;
-  color: #000;
-}
-</style></head>
-<body><pre>${cvText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre></body></html>`);
+@page{margin:0;size:Letter}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.5;color:#000;background:#fff;padding:0.75in}
+pre{font-family:Arial,Helvetica,sans-serif;font-size:11pt;white-space:pre-wrap;word-wrap:break-word;line-height:1.5}
+.s{page-break-inside:avoid;break-inside:avoid;margin-bottom:0.15in}
+</style></head><body>${html}</body></html>`);
   win.document.close();
   win.addEventListener('load', () => { win.focus(); win.print(); win.close(); });
 }
@@ -279,12 +281,12 @@ export function AppCard({ app, userRole, onStatusChange, onDelete, onUpdate, t }
           </pre>
 
           <div className="flex gap-2 flex-wrap">
-            <button onClick={() => printATS(app.cvGeneratedEs ?? '', app.position, app.company)}
+            <button onClick={() => printATS(app.cvGeneratedEs ?? '', 'es', app.position, app.company)}
               disabled={!app.cvGeneratedEs}
               className="btn-ghost text-[9.5px] py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-40">
               <IconDownload /> PDF Español
             </button>
-            <button onClick={() => printATS(app.cvGeneratedEn ?? '', app.position, app.company)}
+            <button onClick={() => printATS(app.cvGeneratedEn ?? '', 'en', app.position, app.company)}
               disabled={!app.cvGeneratedEn}
               className="btn-ghost text-[9.5px] py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-40">
               <IconDownload /> PDF English
