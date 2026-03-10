@@ -9,7 +9,7 @@ import { CurrentUser, type JwtUser } from '../auth/decorators/current-user.decor
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApplicationsService } from './applications.service';
 import {
-  CreateApplicationDto, PatchApplicationDto,
+  CreateApplicationDto, EvaluateCvDto, PatchApplicationDto,
   UpsertBaseCvDto, GenerateCvDto, ExtractCvDto,
 } from './dto/application.dto';
 

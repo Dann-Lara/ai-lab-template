@@ -33,6 +33,21 @@ export const applicationsES = {
     // App card actions
     generateCV: 'Generar CV ATS',
     regenerateCV: 'Re-generar CV ATS',
+    // Delete
+    deleteApp: 'Eliminar',
+    deleteConfirm: '¿Eliminar postulación?',
+    deleteYes: 'Sí, eliminar',
+    deleteNo: 'Cancelar',
+    toastAppDeleted: 'Postulación eliminada',
+    // Card CV viewer
+    viewCV: 'Ver CV ATS',
+    // New application form
+    jobOfferHint: 'Pega la descripción completa — requisitos, responsabilidades y tecnologías.',
+    generatingStep1: '1. Extrayendo palabras clave de la oferta...',
+    generatingStep2: '2. Adaptando CV base al puesto sin inventar datos...',
+    generatingStep3: '3. Generando versión en español e inglés...',
+    atsCompliantNote: 'PDF 100% legible por ATS (sin tablas, columnas ni gráficos)',
+    saveAppHint: 'Guarda la postulación con ambas versiones del CV.',
 
     // New application tab
     cvRequiredTitle: 'CV Base requerido',
@@ -192,6 +207,21 @@ export const applicationsEN = {
 
     generateCV: 'Generate ATS CV',
     regenerateCV: 'Re-generate ATS CV',
+    // Delete
+    deleteApp: 'Delete',
+    deleteConfirm: 'Delete application?',
+    deleteYes: 'Yes, delete',
+    deleteNo: 'Cancel',
+    toastAppDeleted: 'Application deleted',
+    // Card CV viewer
+    viewCV: 'View ATS CV',
+    // New application form
+    jobOfferHint: 'Paste the full job description — requirements, responsibilities and tech stack.',
+    generatingStep1: '1. Extracting keywords from the job offer...',
+    generatingStep2: '2. Adapting base CV to the role without inventing data...',
+    generatingStep3: '3. Generating Spanish and English versions...',
+    atsCompliantNote: 'PDF 100% ATS-readable (no tables, columns or graphics)',
+    saveAppHint: 'Saves the application with both CV versions.',
 
     cvRequiredTitle: 'Base CV required',
     cvRequiredDesc: 'Complete your Base CV before creating an application. AI will use it to generate a 100% ATS-optimized CV tailored to each offer.',

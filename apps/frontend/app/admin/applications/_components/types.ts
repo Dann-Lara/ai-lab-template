@@ -10,7 +10,10 @@ export interface BaseCV {
 
 export interface Application {
   id: string; company: string; position: string; appliedAt: string;
-  status: AppStatus; jobOffer: string; atsScore?: number; cvGenerated?: boolean;
+  status: AppStatus; jobOffer: string; atsScore?: number;
+  cvGenerated?: boolean;
+  cvGeneratedEs?: string;
+  cvGeneratedEn?: string;
 }
 
 export interface CvEvalResult {

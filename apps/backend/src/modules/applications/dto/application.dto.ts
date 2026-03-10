@@ -36,6 +36,8 @@ export class CreateApplicationDto {
 
   @ApiPropertyOptional()
   @IsOptional() cvGenerated?: boolean;
+  @IsOptional() @IsString() generatedCvTextEs?: string;
+  @IsOptional() @IsString() generatedCvTextEn?: string;
 }
 
 // ── Patch Application (status update) ────────────────────────────────────────
@@ -50,6 +52,8 @@ export class PatchApplicationDto {
 
   @ApiPropertyOptional()
   @IsOptional() @IsString() generatedCvText?: string;
+  @IsOptional() @IsString() generatedCvTextEs?: string;
+  @IsOptional() @IsString() generatedCvTextEn?: string;
 }
 
 // ── Generate CV (AI) ──────────────────────────────────────────────────────────
@@ -62,6 +66,7 @@ export class GenerateCvDto {
 
   @ApiProperty({ description: 'Full job offer / description text' })
   @IsString() @MinLength(10) jobOffer!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() lang?: string;
 }
 
 // ── Extract CV from text (PDF text already extracted client-side) ─────────────

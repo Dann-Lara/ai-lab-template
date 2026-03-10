@@ -83,6 +83,14 @@ export default function ApplicationsPage() {
     } catch { showToast(t.applications.toastStatusError, 'err'); }
   }
 
+  async function deleteApp(id: string) {
+    try {
+      await fetch(`/api/applications/${id}`, { method: 'DELETE', headers: getHeaders() });
+      setApps(prev => prev.filter(a => a.id !== id));
+      showToast(t.applications.toastAppDeleted ?? 'Postulación eliminada', 'ok');
+    } catch { showToast(t.applications.toastStatusError, 'err'); }
+  }
+
   const accepted   = apps.filter(a => a.status === 'accepted').length;
   const rejected   = apps.filter(a => a.status === 'rejected').length;
   const pending    = apps.filter(a => a.status === 'pending').length;
@@ -190,7 +198,7 @@ export default function ApplicationsPage() {
                 <div className="space-y-3">
                   {apps.map(app => (
                     <AppCard key={app.id} app={app} onStatusChange={updateStatus}
-                      onGenerate={() => setTab('new')}
+                      onDelete={deleteApp}
                       t={t as { applications: Record<string, string> }} />
                   ))}
                 </div>
@@ -201,8 +209,8 @@ export default function ApplicationsPage() {
           {/* ── NEW tab ────────────────────────────────────────────────── */}
           {tab === 'new' && (
             <NewApplicationForm
-              baseCV={baseCV}
               cvComplete={cvComplete}
+              lang={locale}
               onSaved={() => { showToast(t.applications.toastAppSaved, 'ok'); setTab('list'); loadApps(); }}
               onGoToBaseCV={() => setTab('base-cv')}
               t={t as { applications: Record<string, string> }}

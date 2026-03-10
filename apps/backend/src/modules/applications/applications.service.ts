@@ -124,8 +124,10 @@ export class ApplicationsService {
       jobOffer: dto.jobOffer,
       status: 'pending',
       atsScore: dto.atsScore,
-      cvGenerated: dto.generatedCvText,
-      cvGeneratedFlag: !!(dto.cvGenerated || dto.generatedCvText),
+      cvGenerated: dto.generatedCvTextEs ?? dto.generatedCvText,
+      cvGeneratedEs: dto.generatedCvTextEs,
+      cvGeneratedEn: dto.generatedCvTextEn,
+      cvGeneratedFlag: !!(dto.cvGenerated || dto.generatedCvText || dto.generatedCvTextEs),
     });
     return this.appRepo.save(entity);
   }
@@ -138,6 +140,12 @@ export class ApplicationsService {
       app.cvGenerated = dto.generatedCvText;
       app.cvGeneratedFlag = true;
     }
+    if (dto.generatedCvTextEs !== undefined) {
+      app.cvGeneratedEs = dto.generatedCvTextEs;
+      app.cvGenerated = dto.generatedCvTextEs; // keep compat
+      app.cvGeneratedFlag = true;
+    }
+    if (dto.generatedCvTextEn !== undefined) app.cvGeneratedEn = dto.generatedCvTextEn;
     return this.appRepo.save(app);
   }
 
@@ -146,12 +154,12 @@ export class ApplicationsService {
     await this.appRepo.remove(app);
   }
 
-  // ── AI: Generate ATS-optimized CV ─────────────────────────────────────────
+  // ── AI: Generate dual-language ATS-optimized hybrid CV ─────────────────────
 
   async generateCv(
     userId: string,
     dto: GenerateCvDto,
-  ): Promise<{ atsScore: number; cvText: string }> {
+  ): Promise<{ atsScore: number; cvEs: string; cvEn: string }> {
     const baseCV = await this.cvRepo.findOne({ where: { userId } });
     if (!baseCV || !baseCV.fullName || (!baseCV.experience && !baseCV.summary)) {
       throw new BadRequestException(
@@ -159,29 +167,12 @@ export class ApplicationsService {
       );
     }
 
-    // Build systemMessage and prompt using plain string concatenation.
-    // NO curly braces allowed in the literal text — LangChain treats them as template vars.
-    // User-supplied data is escaped via esc() which converts { } to ( ).
-    const systemMessage =
-      'You are an expert ATS CV optimizer. Your goal: produce a CV with 90-100% keyword match to the job offer WITHOUT inventing any data.\n' +
-      'RULES (strictly enforced):\n' +
-      '1. Use the EXACT technical keywords, tools, and phrases from the job offer — embed them naturally in summary, skills and experience.\n' +
-      '2. Reorder work experience bullets to prioritize what the job offer values most.\n' +
-      '3. Rewrite the professional summary to mirror the role title and top 3 requirements.\n' +
-      '4. NEVER add skills, companies, degrees or certifications not present in the base CV.\n' +
-      '5. Expand abbreviations if the job offer uses full words (e.g. JS → JavaScript).\n' +
-      '6. Format for ATS parsers: plain text only, no tables, columns, icons or graphics.\n' +
-      '7. Structure: Name/Contact → Summary → Experience → Education → Skills → Languages → Certifications.\n' +
-      '8. Calculate ATS Match Score 0-100 based on keyword overlap between the CV output and job offer.\n\n' +
-      'Respond with ONLY raw JSON — no markdown, no backticks:\n' +
-      '{"atsScore":<integer 0-100>,"cvText":"<full optimized CV as plain text with \\n newlines>"}';
-
     const cvBlock =
-      'Name: ' + esc(baseCV.fullName) + '\n' +
-      'Email: ' + esc(baseCV.email) + '\n' +
-      'Phone: ' + esc(baseCV.phone) + '\n' +
-      'Location: ' + esc(baseCV.location) + '\n' +
-      'LinkedIn: ' + esc(baseCV.linkedIn) + '\n\n' +
+      'NAME: ' + esc(baseCV.fullName) + '\n' +
+      'EMAIL: ' + esc(baseCV.email) + '\n' +
+      'PHONE: ' + esc(baseCV.phone) + '\n' +
+      'LOCATION: ' + esc(baseCV.location) + '\n' +
+      'LINKEDIN: ' + esc(baseCV.linkedIn) + '\n\n' +
       'PROFESSIONAL SUMMARY:\n' + esc(baseCV.summary) + '\n\n' +
       'WORK EXPERIENCE:\n' + esc(baseCV.experience) + '\n\n' +
       'EDUCATION:\n' + esc(baseCV.education) + '\n\n' +
@@ -189,36 +180,85 @@ export class ApplicationsService {
       'LANGUAGES:\n' + esc(baseCV.languages) + '\n\n' +
       'CERTIFICATIONS:\n' + esc(baseCV.certifications);
 
+    // ── ATS expert system prompt ──────────────────────────────────────────────
+    // Rules derived from leading ATS systems (Workday, Taleo, Greenhouse, Lever):
+    //  - Standard section headers (no fancy names)
+    //  - Keywords must appear verbatim from the job offer, not paraphrased
+    //  - Contact block on top, no columns/tables/graphics
+    //  - Dates in MM/YYYY format
+    //  - Bullet points with hyphen "-", not Unicode bullets
+    //  - Numbers over words: "5 years" not "five years"
+    //  - Logical inference allowed: if candidate knows React, infer JSX/hooks/components
+    const systemMessage =
+      'You are a world-class ATS CV specialist and career coach. Your task: produce TWO versions of a hybrid CV\n' +
+      '(one in Spanish, one in English) that scores 90-100% on ANY ATS system without lying.\n\n' +
+      'HYBRID APPROACH — how to adapt without inventing:\n' +
+      '- If the base CV lists a technology/tool, you MAY describe logical derivatives:\n' +
+      '  React → "built reusable components with React/JSX and hooks"\n' +
+      '  Node.js → "designed RESTful APIs with Node.js"\n' +
+      '  SQL → "wrote complex queries and optimized indexes"\n' +
+      '- Never add companies, job titles, degrees or dates not in the base CV\n' +
+      '- Never inflate years of experience\n' +
+      '- Rephrase existing achievements to use exact job-offer wording when truthful\n\n' +
+      'ATS FORMATTING RULES (mandatory — ATS systems reject non-compliant CVs):\n' +
+      '1. Plain text only — NO tables, columns, headers/footers, text boxes, images\n' +
+      '2. Section headers: CONTACT | SUMMARY | EXPERIENCE | EDUCATION | SKILLS | LANGUAGES | CERTIFICATIONS\n' +
+      '3. Dates: MM/YYYY–MM/YYYY format (e.g. 03/2021–Present)\n' +
+      '4. Bullet points: hyphen + space "- " only, never Unicode bullets (•, ●, ▸)\n' +
+      '5. Numbers over words: "5 years" not "five years", "3 projects" not "three projects"\n' +
+      '6. Embed exact keywords from the job offer verbatim (ATS does exact string match)\n' +
+      '7. Skills section: comma-separated on a single block, no categories\n' +
+      '8. No personal pronouns (I, me, my) — start bullets with action verbs\n' +
+      '9. File structure: one column, left-to-right top-to-bottom reading order\n' +
+      '10. Summary must start with job title from the offer + years of experience\n\n' +
+      'KEYWORD STRATEGY:\n' +
+      '- Extract ALL technical keywords from the job offer\n' +
+      '- Place the 5 most important ones in the Summary\n' +
+      '- Use remaining keywords naturally in Experience bullets\n' +
+      '- List ALL job-offer skills in Skills section (only if truthfully derivable)\n\n' +
+      'ATS SCORE: calculate 0-100 based on keyword density and section completeness\n\n' +
+      'OUTPUT: ONLY raw JSON, no markdown:\n' +
+      '{"atsScore":<0-100>,"cvEs":"<full Spanish CV with \\n newlines>","cvEn":"<full English CV with \\n newlines>"}';
+
     const prompt =
-      'JOB OFFER - ' + esc(dto.company) + ' / ' + esc(dto.position) + ':\n' +
+      'JOB OFFER (' + esc(dto.company) + ' — ' + esc(dto.position) + '):\n' +
       esc(dto.jobOffer) + '\n\n' +
       '---\n\n' +
       'CANDIDATE BASE CV:\n' + cvBlock + '\n\n' +
-      'Generate the optimized ATS CV and return ONLY the JSON object.';
+      'Produce the dual-language hybrid ATS CV. Return ONLY the JSON object.';
 
-    this.logger.log(`Generating ATS CV for user ${userId} -> ${dto.position} @ ${dto.company}`);
+    this.logger.log(`Generating dual ATS CV: ${dto.position} @ ${dto.company} for user ${userId}`);
 
     return withRetry(async () => {
       const { text, model } = await generateText({
         prompt,
         systemMessage,
-        maxTokens: 3000,
-        temperature: 0.3,
+        maxTokens: 5000,
+        temperature: 0.25,
       });
-      this.logger.debug(`AI model: ${model} — response length: ${text.length} chars`);
-      const parsed = extractJson<{ atsScore: number; cvText: string }>(text);
-      if (!parsed || typeof parsed.atsScore !== 'number' || !parsed.cvText) {
-        this.logger.warn(`Unexpected AI format: ${text.slice(0, 200)}`);
-        throw new Error('AI response missing atsScore or cvText');
+      this.logger.debug(`generateCv model: ${model} — chars: ${text.length}`);
+
+      const parsed = extractJson<{ atsScore: number; cvEs?: string; cvEn?: string; cvText?: string }>(text);
+      if (!parsed || typeof parsed.atsScore !== 'number') {
+        this.logger.warn(`generateCv unexpected format: ${text.slice(0, 200)}`);
+        throw new Error('AI response missing atsScore or CV text');
       }
+
+      // Support old format (cvText) as fallback if model returns single CV
+      const cvEs = (parsed.cvEs ?? parsed.cvText ?? '').trim();
+      const cvEn = (parsed.cvEn ?? parsed.cvText ?? '').trim();
+
+      if (!cvEs && !cvEn) throw new Error('AI returned empty CV content');
+
       return {
         atsScore: Math.min(100, Math.max(0, Math.round(parsed.atsScore))),
-        cvText: parsed.cvText.trim(),
+        cvEs,
+        cvEn,
       };
     }, 2, 2000);
   }
 
-  // ── AI: Extract CV data from PDF text ────────────────────────────────────
+    // ── AI: Extract CV data from PDF text ────────────────────────────────────
 
   async extractCvFromText(
     userId: string,

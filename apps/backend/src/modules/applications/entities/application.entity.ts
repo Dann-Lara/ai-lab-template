@@ -56,7 +56,12 @@ export class ApplicationEntity {
   status!: ApplicationStatus;
 
   @Column({ type: 'int', nullable: true }) atsScore?: number;
+  /** Original single-language generated CV (kept for backwards compat) */
   @Column({ type: 'text', nullable: true }) cvGenerated?: string;
+  /** ATS-optimized CV in Spanish */
+  @Column({ type: 'text', nullable: true }) cvGeneratedEs?: string;
+  /** ATS-optimized CV in English */
+  @Column({ type: 'text', nullable: true }) cvGeneratedEn?: string;
   @Column({ default: false }) cvGeneratedFlag!: boolean;
 
   @CreateDateColumn() appliedAt!: Date;
