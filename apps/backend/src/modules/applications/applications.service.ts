@@ -249,8 +249,8 @@ export class ApplicationsService {
       '  contact = fullName + email + phone + location combined\n\n' +
       'Write all fieldFeedback values in ' + ((dto as any).lang === 'en' ? 'English' : 'Spanish') + '.\n' +
       'Return ONLY raw JSON — no markdown, no backticks:\n' +
-      '{{ "fullName":"","email":"","phone":"","location":"","linkedIn":"","summary":"","experience":"","education":"","skills":"","languages":"","certifications":"", ' +
-      '"fieldFeedback":{{"summary":"","experience":"","skills":"","education":"","contact":"","languages":"","certifications":"","linkedIn":""}} }}';
+      '{ "fullName":"","email":"","phone":"","location":"","linkedIn":"","summary":"","experience":"","education":"","skills":"","languages":"","certifications":"", ' +
+      '"fieldFeedback":{"summary":"","experience":"","skills":"","education":"","contact":"","languages":"","certifications":"","linkedIn":""} }';
 
     const prompt = 'Extract and evaluate this CV PDF text:\n\n' + esc(truncated);
 
@@ -329,7 +329,7 @@ export class ApplicationsService {
       '- summary field in output: ONE sentence max 12 words in ' + lang + '\n' +
       '- Do NOT invent or assume missing info\n\n' +
       'OUTPUT — exactly this JSON shape, no extra keys:\n' +
-      '{"score":0,"approved":false,"summary":"","fieldFeedback":{"contact":"","linkedIn":"","summary":"","experience":"","skills":"","education":"","languages":"","certifications":""}}';
+      '{"score":0,"approved":false,"summary":"","fieldFeedback":{"contact":"","linkedIn":"","summary":"","experience":"","skills":"","education":"","languages":"","certifications":""}';
 
     const prompt = 'SCORE THIS CV:\n' + cvText;
 

@@ -16,7 +16,7 @@
  *   const { text, provider, model } = await executeWithFallback({ prompt });
  */
 import { StringOutputParser } from '@langchain/core/output_parsers';
-import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { getActiveProviders, isExhaustedError, type ProviderName } from '../providers/registry';
 import { createLLM, type LLMOptions } from './factory';
 
@@ -57,7 +57,6 @@ export async function executeWithFallback(options: ExecuteOptions): Promise<Exec
     );
   }
 
-  const outputParser = new StringOutputParser();
   const errors: string[] = [];
 
   for (const providerConfig of providers) {
@@ -68,13 +67,14 @@ export async function executeWithFallback(options: ExecuteOptions): Promise<Exec
 
       const llm = await createLLM(providerConfig.name, { temperature, maxTokens, model: providerModel });
 
-      const chatPrompt = ChatPromptTemplate.fromMessages([
-        ['system', systemMessage],
-        ['human', '{input}'],
-      ]);
+      const messages = [
+        new SystemMessage(systemMessage),
+        new HumanMessage(prompt),
+      ];
 
-      const chain = chatPrompt.pipe(llm).pipe(outputParser);
-      const text = await chain.invoke({ input: prompt });
+      const outputParser = new StringOutputParser();
+      const result = await llm.invoke(messages);
+      const text = await outputParser.invoke(result);
 
       log('info', `Success: ${providerConfig.name} (${providerModel})`);
       // Debug: log a preview of what the model returned (helps diagnose JSON parse issues)
