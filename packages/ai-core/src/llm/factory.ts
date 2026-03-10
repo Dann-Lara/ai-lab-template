@@ -22,7 +22,7 @@ export async function createLLM(
   switch (provider) {
     case 'gemini': {
       const { ChatGoogleGenerativeAI } = await import('@langchain/google-genai');
-      const model = options.model ?? process.env['GEMINI_DEFAULT_MODEL'] ?? 'gemini-1.5-flash';
+      const model = options.model ?? process.env['GEMINI_DEFAULT_MODEL'] ?? 'gemini-2.0-flash';
       return new ChatGoogleGenerativeAI({
         apiKey: process.env['GEMINI_API_KEY']!,
         model,
