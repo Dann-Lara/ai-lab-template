@@ -128,6 +128,7 @@ export class ApplicationsService {
       cvGeneratedEs: dto.generatedCvTextEs,
       cvGeneratedEn: dto.generatedCvTextEn,
       cvGeneratedFlag: !!(dto.cvGenerated || dto.generatedCvText || dto.generatedCvTextEs),
+      appliedFrom: dto.appliedFrom,
     });
     return this.appRepo.save(entity);
   }
@@ -146,6 +147,9 @@ export class ApplicationsService {
       app.cvGeneratedFlag = true;
     }
     if (dto.generatedCvTextEn !== undefined) app.cvGeneratedEn = dto.generatedCvTextEn;
+    if (dto.appliedFrom !== undefined) app.appliedFrom = dto.appliedFrom;
+    if (dto.interviewQuestions !== undefined) app.interviewQuestions = dto.interviewQuestions;
+    if (dto.interviewAnswers !== undefined) app.interviewAnswers = dto.interviewAnswers;
     return this.appRepo.save(app);
   }
 
@@ -278,6 +282,85 @@ export class ApplicationsService {
 
       return { atsScore, cvEs, cvEn };
     }, 2, 2000);
+  }
+
+    // ── AI: Answer interview questions ──────────────────────────────────────────
+
+  async answerInterviewQuestions(
+    userId: string,
+    appId: string,
+    questions: string,
+    lang: string,
+    userRole: string,
+  ): Promise<{ answers: string }> {
+    const app = await this.findOne(userId, appId);
+    const baseCV = await this.cvRepo.findOne({ where: { userId } });
+
+    if (!baseCV) throw new BadRequestException('Base CV not found');
+    if (!app.cvGeneratedEs && !app.cvGeneratedEn) {
+      throw new BadRequestException('No generated CV found for this application');
+    }
+
+    const isEs   = (lang ?? 'es') === 'es';
+    const langTx = isEs ? 'Spanish' : 'English';
+
+    // Compose CV context block
+    const cvContext =
+      '=== BASE CV ===\n' +
+      'Name: ' + esc(baseCV.fullName) + ' | Email: ' + esc(baseCV.email) + '\n' +
+      'Summary: ' + esc((baseCV.summary ?? '').slice(0, 800)) + '\n' +
+      'Experience: ' + esc((baseCV.experience ?? '').slice(0, 1500)) + '\n' +
+      'Skills: ' + esc((baseCV.skills ?? '').slice(0, 400)) + '\n' +
+      'Education: ' + esc((baseCV.education ?? '').slice(0, 400)) + '\n' +
+      'Languages: ' + esc(baseCV.languages ?? '') + '\n' +
+      'Certs: ' + esc((baseCV.certifications ?? '').slice(0, 300)) + '\n\n' +
+      '=== TAILORED CV (for ' + esc(app.position) + ' @ ' + esc(app.company) + ') ===\n' +
+      esc(((app.cvGeneratedEs ?? app.cvGeneratedEn) ?? '').slice(0, 2000));
+
+    // Technical doc context for superadmin
+    const techContext = userRole === 'superadmin'
+      ? '\n\n=== TECHNICAL REPOSITORY CONTEXT ===\n' +
+        'This is an AI-powered job application assistant built on a Next.js 14 + NestJS monorepo (Turborepo).\n' +
+        'Tech: TypeScript, PostgreSQL (TypeORM), Redis, LangChain, Google Gemini / OpenAI / Groq (multi-provider fallback).\n' +
+        'Architecture: PermissionsProvider (DB-backed per user), JWT auth, modular NestJS services.\n' +
+        'Applications module: Base CV (ATS scored >=85 to save), hybrid AI CV generator (ES+EN), PDF export, Q&A assistant.\n' +
+        'Candidate is superadmin — may reference system capabilities, AI models used, or technical implementation if relevant to interview questions.'
+      : '';
+
+    const systemMessage =
+      'You are a professional interview coach and career advisor helping a job applicant answer interview questions.\n' +
+      'Answer all questions based STRICTLY on the provided CVs and context.\n\n' +
+      'INFERENCE RULES (apply these before answering):\n' +
+      '- If the CV shows a senior-level tool or framework, INFER logical derivatives:\n' +
+      '  Angular -> knows observables/RxJS, lazy loading, dependency injection, NgRx\n' +
+      '  React -> knows hooks, context, code splitting, testing with RTL\n' +
+      '  Node.js -> knows async/await, event loop, streams, Express middleware\n' +
+      '  TypeScript -> knows generics, decorators, utility types\n' +
+      '  AWS -> knows IAM, VPC, EC2/ECS, CloudWatch basics\n' +
+      '  Docker -> knows compose, networking, volumes, multi-stage builds\n' +
+      '- If the CV shows X years senior experience, infer leadership and mentoring capacity\n' +
+      '- NEVER invent specific company names, projects, or numbers not in the CV\n' +
+      '- If a question cannot be answered from CV context, give a genuine best-effort answer that fits the profile\n\n' +
+      'FORMAT:\n' +
+      '- Answer each question clearly, numbered to match\n' +
+      '- Each answer: 2-4 sentences, professional but natural tone\n' +
+      '- Use first person ("I have..." / "En mi experiencia...")\n' +
+      '- Language: ' + langTx + '\n\n' +
+      'CV CONTEXT:\n' + cvContext + techContext;
+
+    const prompt =
+      'JOB: ' + esc(app.position) + ' @ ' + esc(app.company) + '\n\n' +
+      'INTERVIEW QUESTIONS:\n' + esc(questions) + '\n\n' +
+      'Provide clear, professional answers to each question above.';
+
+    return withRetry(async () => {
+      const { text } = await generateText({
+        prompt, systemMessage, maxTokens: 3000, temperature: 0.4,
+      });
+      // Strip any accidental markdown
+      const clean = text.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
+      return { answers: clean };
+    }, 2, 1500);
   }
 
     // ── AI: Extract CV data from PDF text ────────────────────────────────────

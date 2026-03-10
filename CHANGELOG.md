@@ -4,6 +4,53 @@ All notable changes to AI Lab Template are documented here.
 
 ---
 
+## [v20] — 2026-03-10
+
+### Applications Module — Major Feature Update
+
+#### CV Generation
+- **Dual-language ATS CV**: `generateCv` now returns `cvEs` (Spanish) + `cvEn` (English) via delimiter format (`===ES===` / `===EN===`), avoiding JSON string truncation for long CVs
+- **Editable CVs**: Generated CVs render as `<textarea>` — users edit content before saving/printing; dirty-flag badge tracks human edits per language
+- **ATS-clean PDF**: `@page { margin: 0 }` + `body { padding: 0.75in }` removes all browser-injected headers (URL, title, date, page numbers) from print output
+- **Pro ATS prompt**: Explicit rules for Taleo/Workday/Greenhouse compliance — plain text, `MM/YYYY` dates, `- ` bullets, ALL CAPS section headers, exact keyword verbatim matching, logical technology inference
+- **`appliedFrom` field**: New field on applications (LinkedIn, Indeed, Glassdoor, OCC, Computrabajo, etc.) — selectable dropdown + free-text override
+
+#### Interview Q&A Assistant
+- New `POST /v1/applications/:id/interview-qa` endpoint
+- AI answers interview questions using base CV + tailored CV as context
+- Inference rules: senior-level tool → infers logical derivatives (Angular → RxJS, React → hooks, etc.)
+- **Superadmin context**: superadmin role gets additional system/repo technical context in the AI prompt
+- Answers editable in textarea before saving
+- `PATCH /applications/:id` saves `interviewQuestions` + `interviewAnswers`
+- New Next.js proxy: `app/api/applications/[id]/interview-qa/route.ts`
+
+#### CV Evaluation (Field Status System)
+- Per-field color rings: green (ok/locked), amber (warn), red (error/missing)
+- Approved fields are locked (disabled inputs) with "Editar" unlock button
+- Re-evaluation sends `approvedFields` — AI skips locked fields, no infinite optimization loops
+- `approvedFields` pattern in `EvaluateCvDto` + backend short-circuit for 100% approved
+
+#### UI/UX
+- Removed emoji flags from all CV tabs and PDF buttons — plain "Español" / "English" text
+- AppCard: no SVG flags, text-only language tabs
+- AppCard expand panel shows CV preview + PDF export buttons
+- Delete confirmation inline (no modal)
+- `appliedFrom` inline edit in AppCard with dropdown + free text
+- `onUpdate` callback wires local state updates without full reload
+
+#### Backend
+- `ApplicationEntity`: new columns `cvGeneratedEs`, `cvGeneratedEn`, `appliedFrom`, `interviewQuestions`, `interviewAnswers`
+- `CreateApplicationDto` / `PatchApplicationDto`: whitelisted new fields
+- `AnswerInterviewDto`: new DTO for interview Q&A generation
+- `EvaluateCvDto`: `approvedFields?: string[]` — prevents re-evaluation of passing fields
+
+#### Documentation
+- **`docs/TECHNICAL.md`** (353 lines) — full technical reference: architecture, stack, AI strategy, ATS compliance rules, data model, API table, design decisions
+- **`README.md`** — updated with new endpoints and features
+- **`CHANGELOG.md`** — this entry
+
+---
+
 ## [v19c] — 2026-03-02
 
 ### Added — n8n Workflow Auto-Sync + Multi-Environment Setup

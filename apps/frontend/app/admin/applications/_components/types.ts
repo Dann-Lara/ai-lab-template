@@ -14,6 +14,9 @@ export interface Application {
   cvGenerated?: boolean;
   cvGeneratedEs?: string;
   cvGeneratedEn?: string;
+  appliedFrom?: string;
+  interviewQuestions?: string;
+  interviewAnswers?: string;
 }
 
 export interface CvEvalResult {

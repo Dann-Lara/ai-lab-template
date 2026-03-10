@@ -91,6 +91,10 @@ export default function ApplicationsPage() {
     } catch { showToast(t.applications.toastStatusError, 'err'); }
   }
 
+  function updateApp(id: string, patch: Partial<import('./_components/types').Application>) {
+    setApps(prev => prev.map(a => a.id === id ? { ...a, ...patch } : a));
+  }
+
   const accepted   = apps.filter(a => a.status === 'accepted').length;
   const rejected   = apps.filter(a => a.status === 'rejected').length;
   const pending    = apps.filter(a => a.status === 'pending').length;
@@ -197,8 +201,11 @@ export default function ApplicationsPage() {
               ) : (
                 <div className="space-y-3">
                   {apps.map(app => (
-                    <AppCard key={app.id} app={app} onStatusChange={updateStatus}
+                    <AppCard key={app.id} app={app}
+                      userRole={user.role}
+                      onStatusChange={updateStatus}
                       onDelete={deleteApp}
+                      onUpdate={updateApp}
                       t={t as { applications: Record<string, string> }} />
                   ))}
                 </div>

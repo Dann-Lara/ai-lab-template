@@ -38,6 +38,7 @@ export class CreateApplicationDto {
   @IsOptional() cvGenerated?: boolean;
   @IsOptional() @IsString() generatedCvTextEs?: string;
   @IsOptional() @IsString() generatedCvTextEn?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) appliedFrom?: string;
 }
 
 // ── Patch Application (status update) ────────────────────────────────────────
@@ -54,6 +55,9 @@ export class PatchApplicationDto {
   @IsOptional() @IsString() generatedCvText?: string;
   @IsOptional() @IsString() generatedCvTextEs?: string;
   @IsOptional() @IsString() generatedCvTextEn?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) appliedFrom?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() interviewQuestions?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() interviewAnswers?: string;
 }
 
 // ── Generate CV (AI) ──────────────────────────────────────────────────────────
@@ -103,4 +107,15 @@ export interface CvEvaluationResult {
   fieldFeedback: Record<string, string>; // per-field tip
   summary: string; // overall one-liner
   approved: boolean; // score >= 85
+}
+
+// ── Answer interview questions (AI) ─────────────────────────────────────────
+export class AnswerInterviewDto {
+  @ApiProperty({ description: 'Application id' })
+  @IsString() @MinLength(1) applicationId!: string;
+
+  @ApiProperty({ description: 'Raw interview questions text (one per line or numbered)' })
+  @IsString() @MinLength(5) questions!: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() lang?: string;
 }

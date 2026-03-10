@@ -65,6 +65,23 @@ See [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) for the full reference.
 
 ---
 
+## Applications Module
+
+The built-in job applications assistant demonstrates every architectural layer:
+
+| Feature | Description |
+|---------|-------------|
+| Base CV | ATS-scored form (score ≥ 85 to save). Field-level color feedback. |
+| Hybrid CV | Dual-language (ES + EN) ATS-optimized CV generation from base CV + job offer |
+| Editable CVs | User reviews and edits AI output before saving/printing |
+| PDF Export | ATS-clean print (no browser headers/footers, single column, Arial font) |
+| Interview Q&A | AI answers pasted interview questions using the tailored CV as context |
+| Applied-from | Track application source (LinkedIn, Indeed, etc.) per application |
+
+> Technical details → [`docs/TECHNICAL.md`](docs/TECHNICAL.md)
+
+---
+
 ## AI Providers
 
 Multiple providers with **automatic fallback** — if one fails (quota, rate limit, key error), the next is tried automatically.

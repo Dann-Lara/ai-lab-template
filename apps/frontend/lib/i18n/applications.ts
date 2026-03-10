@@ -54,6 +54,24 @@ export const applicationsES = {
     pdfExportEs: 'PDF Español (ATS)',
     pdfExportEn: 'PDF Inglés (ATS)',
     saveAppHintEdited: 'Se guardará tu versión editada.',
+    // Applied from
+    appliedFromLabel: 'Origen de la postulación',
+    appliedFromPlaceholder: 'Seleccioná de dónde aplicás...',
+    appliedFromCustom: 'o escribí uno...',
+    appliedFromAdd: '+ Agregar origen',
+    // Interview Q&A
+    interviewQA: 'Entrevista',
+    interviewQATitle: 'Preguntas de entrevista',
+    interviewQuestionsLabel: 'Preguntas (una por línea o numeradas)',
+    interviewQuestionsPlaceholder: '¿Por qué querés trabajar aquí?\n¿Cuál es tu mayor fortaleza?\n¿Cómo manejás el trabajo bajo presión?',
+    interviewAnswersLabel: 'Respuestas sugeridas — editá antes de usar',
+    generateAnswers: 'Generar respuestas',
+    generatingAnswers: 'Generando...',
+    saveAnswers: 'Guardar preguntas y respuestas',
+    savingAnswers: 'Guardando...',
+    // Generic
+    save: 'Guardar',
+    cancel: 'Cancelar',
 
     // New application tab
     cvRequiredTitle: 'CV Base requerido',
@@ -234,6 +252,24 @@ export const applicationsEN = {
     pdfExportEs: 'PDF Spanish (ATS)',
     pdfExportEn: 'PDF English (ATS)',
     saveAppHintEdited: 'Your edited version will be saved.',
+    // Applied from
+    appliedFromLabel: 'Application source',
+    appliedFromPlaceholder: 'Select where you applied from...',
+    appliedFromCustom: 'or type one...',
+    appliedFromAdd: '+ Add source',
+    // Interview Q&A
+    interviewQA: 'Interview',
+    interviewQATitle: 'Interview questions',
+    interviewQuestionsLabel: 'Questions (one per line or numbered)',
+    interviewQuestionsPlaceholder: 'Why do you want to work here?\nWhat is your greatest strength?\nHow do you handle working under pressure?',
+    interviewAnswersLabel: 'Suggested answers — edit before using',
+    generateAnswers: 'Generate answers',
+    generatingAnswers: 'Generating...',
+    saveAnswers: 'Save questions & answers',
+    savingAnswers: 'Saving...',
+    // Generic
+    save: 'Save',
+    cancel: 'Cancel',
 
     cvRequiredTitle: 'Base CV required',
     cvRequiredDesc: 'Complete your Base CV before creating an application. AI will use it to generate a 100% ATS-optimized CV tailored to each offer.',

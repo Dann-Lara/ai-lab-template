@@ -64,6 +64,13 @@ export class ApplicationEntity {
   @Column({ type: 'text', nullable: true }) cvGeneratedEn?: string;
   @Column({ default: false }) cvGeneratedFlag!: boolean;
 
+  /** Where the user applied from (e.g. linkedin, indeed, company website) */
+  @Column({ length: 200, nullable: true }) appliedFrom?: string;
+  /** Raw textarea of interview questions pasted by the user */
+  @Column({ type: 'text', nullable: true }) interviewQuestions?: string;
+  /** AI-generated answers to the interview questions */
+  @Column({ type: 'text', nullable: true }) interviewAnswers?: string;
+
   @CreateDateColumn() appliedAt!: Date;
   @UpdateDateColumn() updatedAt!: Date;
 }

@@ -12,28 +12,6 @@ interface Props {
 }
 
 // ── Language flag icons (SVG, no emojis) ────────────────────────────────────
-const IconFlagES = () => (
-  <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
-    <rect width="16" height="12" rx="1.5" fill="#AA151B"/>
-    <rect y="2.5" width="16" height="7" fill="#F1BF00"/>
-    <rect y="2.5" width="16" height="1.2" fill="#AA151B"/>
-    <rect y="8.3" width="16" height="1.2" fill="#AA151B"/>
-  </svg>
-);
-const IconFlagEN = () => (
-  <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
-    <rect width="16" height="12" rx="1.5" fill="#012169"/>
-    {/* Union Jack simplified */}
-    <line x1="0" y1="0" x2="16" y2="12" stroke="white" strokeWidth="2.5"/>
-    <line x1="16" y1="0" x2="0" y2="12" stroke="white" strokeWidth="2.5"/>
-    <line x1="8" y1="0" x2="8" y2="12" stroke="white" strokeWidth="3.5"/>
-    <line x1="0" y1="6" x2="16" y2="6" stroke="white" strokeWidth="3.5"/>
-    <line x1="0" y1="0" x2="16" y2="12" stroke="#C8102E" strokeWidth="1.5"/>
-    <line x1="16" y1="0" x2="0" y2="12" stroke="#C8102E" strokeWidth="1.5"/>
-    <line x1="8" y1="0" x2="8" y2="12" stroke="#C8102E" strokeWidth="2"/>
-    <line x1="0" y1="6" x2="16" y2="6" stroke="#C8102E" strokeWidth="2"/>
-  </svg>
-);
 
 // ── Edit badge ────────────────────────────────────────────────────────────────
 const IconEdit = () => (
@@ -50,13 +28,26 @@ function printATS(cvText: string, lng: 'es' | 'en', position: string, company: s
   if (!win) return;
   const title = `CV_${lng.toUpperCase()}_${position.replace(/\s+/g,'_')}_${company.replace(/\s+/g,'_')}`;
   win.document.write(`<!DOCTYPE html>
-<html lang="${lng}"><head><meta charset="UTF-8"/><title>${title}</title>
+<html lang="${lng}"><head><meta charset="UTF-8"/><title></title>
 <style>
-@page{margin:0.75in;size:Letter}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.45;color:#000;background:#fff}
-pre{font-family:Arial,Helvetica,sans-serif;font-size:11pt;white-space:pre-wrap;word-wrap:break-word;line-height:1.45;color:#000}
-@media print{body{margin:0}}
+@page { margin: 0; size: Letter; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11pt;
+  line-height: 1.45;
+  color: #000;
+  background: #fff;
+  padding: 0.75in;
+}
+pre {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11pt;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: 1.45;
+  color: #000;
+}
 </style></head><body>
 <pre>${cvText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
 </body></html>`);
@@ -67,7 +58,7 @@ pre{font-family:Arial,Helvetica,sans-serif;font-size:11pt;white-space:pre-wrap;w
 export function NewApplicationForm({ cvComplete, onSaved, onGoToBaseCV, t }: Props) {
   const ta = t.applications;
 
-  const [form, setForm]       = useState({ company: '', position: '', jobOffer: '' });
+  const [form, setForm]       = useState({ company: '', position: '', jobOffer: '', appliedFrom: '' });
   const [generating, setGen]  = useState(false);
   const [genError, setErr]    = useState('');
   const [atsScore, setScore]  = useState<number | null>(null);
@@ -250,7 +241,6 @@ export function NewApplicationForm({ cvComplete, onSaved, onGoToBaseCV, t }: Pro
                                 ${activeTab === lng
                                   ? 'border-sky-500 text-sky-600 dark:text-sky-400 bg-slate-50 dark:bg-slate-900/50'
                                   : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
-                    {lng === 'es' ? <IconFlagES /> : <IconFlagEN />}
                     {lng === 'es' ? 'Español' : 'English'}
                     {edited && (
                       <span className="flex items-center gap-0.5 text-emerald-500">
@@ -307,17 +297,13 @@ export function NewApplicationForm({ cvComplete, onSaved, onGoToBaseCV, t }: Pro
                   onClick={() => printATS(cvEs, 'es', form.position, form.company)}
                   disabled={!cvEs}
                   className="btn-ghost text-[10px] py-2 px-4 flex items-center gap-2 disabled:opacity-40">
-                  <IconDownload />
-                  <IconFlagES />
-                  {ta.pdfExportEs ?? 'PDF Español (ATS)'}
+                  <IconDownload />{ta.pdfExportEs ?? 'PDF Español'}
                 </button>
                 <button
                   onClick={() => printATS(cvEn, 'en', form.position, form.company)}
                   disabled={!cvEn}
                   className="btn-ghost text-[10px] py-2 px-4 flex items-center gap-2 disabled:opacity-40">
-                  <IconDownload />
-                  <IconFlagEN />
-                  {ta.pdfExportEn ?? 'PDF English (ATS)'}
+                  <IconDownload />{ta.pdfExportEn ?? 'PDF English'}
                 </button>
                 <span className="ml-auto font-mono text-[9px] text-slate-400">
                   {ta.atsCompliantNote ?? 'Sin tablas, columnas ni gráficos — ATS-friendly'}

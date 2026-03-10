@@ -10,7 +10,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ApplicationsService } from './applications.service';
 import {
   CreateApplicationDto, EvaluateCvDto, PatchApplicationDto,
-  UpsertBaseCvDto, GenerateCvDto, ExtractCvDto,
+  UpsertBaseCvDto, GenerateCvDto, ExtractCvDto, AnswerInterviewDto,
 } from './dto/application.dto';
 
 @ApiTags('Applications')
@@ -111,5 +111,17 @@ export class ApplicationsController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.svc.remove(user.userId, id);
+  }
+
+  @Post(':id/interview-qa')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'AI-answer interview questions using the application CVs' })
+  answerInterview(
+    @CurrentUser() user: JwtUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AnswerInterviewDto,
+  ) {
+    return this.svc.answerInterviewQuestions(user.userId, id, dto.questions, dto.lang ?? 'es', user.role);
   }
 }
