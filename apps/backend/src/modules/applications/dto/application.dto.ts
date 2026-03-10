@@ -1,5 +1,5 @@
 import {
-  IsEnum, IsInt, IsOptional, IsString,
+  IsEnum, IsInt, IsNumber, IsOptional, IsString,
   Max, MaxLength, Min, MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -18,6 +18,8 @@ export class UpsertBaseCvDto {
   @ApiPropertyOptional() @IsOptional() @IsString() skills?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(250) languages?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() certifications?: string;
+  /** CV quality score returned by the evaluate endpoint — must be >= 85 to save */
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Max(100) cvScore?: number;
 }
 
 // ── Create Application ────────────────────────────────────────────────────────

@@ -223,7 +223,7 @@ export class ApplicationsService {
   async extractCvFromText(
     userId: string,
     dto: ExtractCvDto,
-  ): Promise<Partial<Record<typeof CV_FIELDS[number], string>>> {
+  ): Promise<Partial<Record<typeof CV_FIELDS[number], string>> & { fieldFeedback?: Record<string, string> }> {
     if (!dto.pdfText || dto.pdfText.length < 10) {
       throw new BadRequestException('PDF text is too short to extract data from');
     }
@@ -232,27 +232,26 @@ export class ApplicationsService {
       ? dto.pdfText.slice(0, 8000) + '\n...[truncated]'
       : dto.pdfText;
 
+    // Combined extract + evaluate: one AI call returns extracted fields AND per-field hints.
+    // This avoids a separate evaluate call after extraction.
     const systemMessage =
-      'You are a precise CV/resume data extractor. Extract EVERY detail from the raw PDF text.\n' +
-      'Return ONLY a valid JSON object. No markdown fences, no explanation, no extra text.\n' +
-      'Required keys (always present, use empty string if not found):\n' +
-      'fullName, email, phone, location, linkedIn, summary, experience, education, skills, languages, certifications\n\n' +
+      'You are a CV data extractor AND ATS quality evaluator. Do both tasks in one pass.\n\n' +
+      'TASK 1 — EXTRACT all CV data from the raw PDF text into these fields:\n' +
+      '  fullName, email, phone, location, linkedIn, summary, experience, education, skills, languages, certifications\n' +
       'Extraction rules:\n' +
-      '- fullName: person full legal name\n' +
-      '- email: professional email address\n' +
-      '- phone: phone with country code if present\n' +
-      '- location: city + country or region\n' +
-      '- linkedIn: full LinkedIn profile URL if present\n' +
-      '- summary: professional summary or objective paragraph — copy verbatim if present\n' +
-      '- experience: for EACH role include: Company | Job Title | MM/YYYY – MM/YYYY, then bullet achievements. Preserve ALL roles.\n' +
-      '- education: institution, degree/field, graduation year for each entry\n' +
-      '- skills: comma-separated technical skills list\n' +
+      '- experience: for EACH role: Company | Job Title | MM/YYYY–MM/YYYY, then bullets with achievements. Preserve ALL roles.\n' +
+      '- skills: comma-separated list\n' +
       '- languages: e.g. Spanish (native), English (C1)\n' +
-      '- certifications: name — issuer — year for each\n' +
-      '- All values must be plain strings without special encoding\n' +
-      '- Your entire response must start with {{ and end with }}';
+      '- certifications: name — issuer — year\n' +
+      '- All values must be plain strings\n\n' +
+      'TASK 2 — EVALUATE each field for ATS quality and set a one-sentence hint if incomplete (max 12 words), or empty string "" if ok:\n' +
+      '  fieldFeedback keys: summary, experience, skills, education, contact, languages, certifications, linkedIn\n' +
+      '  contact = fullName + email + phone + location combined\n\n' +
+      'Return ONLY raw JSON — no markdown, no backticks:\n' +
+      '{{ "fullName":"","email":"","phone":"","location":"","linkedIn":"","summary":"","experience":"","education":"","skills":"","languages":"","certifications":"", ' +
+      '"fieldFeedback":{{"summary":"","experience":"","skills":"","education":"","contact":"","languages":"","certifications":"","linkedIn":""}} }}';
 
-    const prompt = 'Extract all CV data from this PDF text and return as JSON. Preserve ALL work experience entries:\n\n' + esc(truncated);
+    const prompt = 'Extract and evaluate this CV PDF text:\n\n' + esc(truncated);
 
     this.logger.log(`Extracting CV for user ${userId} — text length: ${dto.pdfText.length} chars`);
 
@@ -260,20 +259,24 @@ export class ApplicationsService {
       const { text, model } = await generateText({
         prompt,
         systemMessage,
-        maxTokens: 2000,
+        maxTokens: 3500,
         temperature: 0.05,
       });
       this.logger.debug(`AI model: ${model} — response preview: ${text.slice(0, 150)}`);
-      const parsed = extractJson<Record<string, string>>(text);
+      const parsed = extractJson<Record<string, unknown>>(text);
       if (!parsed) {
         this.logger.warn(`Could not extract JSON from: ${text.slice(0, 300)}`);
         throw new Error('AI returned unstructured response');
       }
-      const normalized: Record<string, string> = {};
+      const normalized: Record<string, unknown> = {};
       for (const key of CV_FIELDS) {
         normalized[key] = typeof parsed[key] === 'string' ? parsed[key] : '';
       }
-      return normalized;
+      // Pass through fieldFeedback if present (combined extract+evaluate response)
+      if (parsed['fieldFeedback'] && typeof parsed['fieldFeedback'] === 'object') {
+        normalized['fieldFeedback'] = parsed['fieldFeedback'];
+      }
+      return normalized as Partial<Record<typeof CV_FIELDS[number], string>> & { fieldFeedback?: Record<string, string> };
     }, 2, 2000);
   }
 
