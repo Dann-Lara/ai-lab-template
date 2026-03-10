@@ -305,6 +305,10 @@ export default function ApplicationsPage() {
   const [baseCV, setBaseCV] = useState<BaseCV>(EMPTY_CV);
   const [cvSaving, setCvSaving] = useState(false);
   const [cvExtracted, setCvExtracted] = useState(false);
+  const [cvEvalLoading, setCvEvalLoading] = useState(false);
+  const [cvScore, setCvScore] = useState<number | null>(null);
+  const [cvEvalSummary, setCvEvalSummary] = useState('');
+  const [cvFieldFeedback, setCvFieldFeedback] = useState<Record<string, string>>({});
 
   const [newForm, setNewForm] = useState({ company: '', position: '', jobOffer: '' });
   const [generating, setGenerating] = useState(false);
@@ -360,13 +364,38 @@ export default function ApplicationsPage() {
     }
   }, [authLoading, user, loadApps, loadBaseCV]);
 
+  async function evaluateCV() {
+    setCvEvalLoading(true);
+    try {
+      const res = await fetch('/api/applications/base-cv/evaluate', {
+        method: 'POST', headers: getHeaders(),
+        body: JSON.stringify(baseCV),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json() as { score: number; summary: string; fieldFeedback: Record<string, string>; approved: boolean };
+      setCvScore(data.score);
+      setCvEvalSummary(data.summary);
+      setCvFieldFeedback(data.fieldFeedback ?? {});
+      if (data.approved) showToast(t.applications.cvEvalApproved, 'ok');
+      else showToast(t.applications.cvEvalNeedsWork, 'err');
+    } catch {
+      showToast(t.applications.toastCVSaveError, 'err');
+    } finally {
+      setCvEvalLoading(false);
+    }
+  }
+
   async function saveBaseCV() {
     setCvSaving(true);
     try {
+      if (!cvScore || cvScore < 85) {
+        showToast(t.applications.cvEvalRequired, 'err');
+        return;
+      }
       const res = await fetch('/api/applications/base-cv', {
         method: 'PUT',
         headers: getHeaders(),
-        body: JSON.stringify(baseCV),
+        body: JSON.stringify({ ...baseCV, cvScore }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       // Cache locally for offline use
@@ -668,6 +697,7 @@ export default function ApplicationsPage() {
         {/* ── TAB: BASE CV ─────────────────────────────────────────────────── */}
         {tab === 'base-cv' && (
           <div className="space-y-6">
+
             {/* PDF Import */}
             <div className="card p-5">
               <div className="flex items-center gap-2 mb-3">
@@ -687,7 +717,7 @@ export default function ApplicationsPage() {
             </div>
 
             {/* Manual form */}
-            <div className="card p-6 space-y-6">
+            <div className="card p-6 space-y-8">
               <div>
                 <h2 className="font-mono text-[11px] uppercase tracking-[0.3em] text-slate-500 mb-1">
                   {t.applications.baseCVTitle}
@@ -695,49 +725,166 @@ export default function ApplicationsPage() {
                 <p className="font-mono text-[10px] text-slate-400">{t.applications.baseCVDesc}</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  { key: 'fullName', label: t.applications.fieldFullName },
-                  { key: 'email',    label: t.applications.fieldEmail },
-                  { key: 'phone',    label: t.applications.fieldPhone },
-                  { key: 'location', label: t.applications.fieldLocation },
-                  { key: 'linkedIn', label: t.applications.fieldLinkedIn },
-                ].map(f => (
-                  <div key={f.key}>
-                    <label className="block font-mono text-[10px] uppercase tracking-widest text-slate-400 mb-1.5">{f.label}</label>
+              {/* ── Contact fields ── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {([
+                  { key: 'fullName', label: t.applications.fieldFullName,   hint: t.applications.hintFullName },
+                  { key: 'email',    label: t.applications.fieldEmail,       hint: t.applications.hintEmail },
+                  { key: 'phone',    label: t.applications.fieldPhone,       hint: t.applications.hintPhone },
+                  { key: 'location', label: t.applications.fieldLocation,    hint: t.applications.hintLocation },
+                  { key: 'linkedIn', label: t.applications.fieldLinkedIn,    hint: t.applications.hintLinkedIn },
+                ] as { key: string; label: string; hint: string }[]).map(f => (
+                  <div key={f.key} className="space-y-1">
+                    <label className="block font-mono text-[10px] uppercase tracking-widest text-slate-400">{f.label}</label>
                     <input value={baseCV[f.key as keyof BaseCV]}
-                      onChange={e => setBaseCV(p => ({ ...p, [f.key]: e.target.value }))}
+                      onChange={e => { setBaseCV(p => ({ ...p, [f.key]: e.target.value })); setCvScore(null); setCvFieldFeedback({}); }}
                       className="input-field" />
+                    {/* ATS hack tip */}
+                    {!cvFieldFeedback[f.key === 'phone' || f.key === 'location' || f.key === 'linkedIn' ? 'contact' : f.key] ? (
+                      <p className="font-mono text-[9.5px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                        💡 {f.hint}
+                      </p>
+                    ) : (
+                      <p className="font-mono text-[9.5px] text-amber-600 dark:text-amber-400 leading-relaxed">
+                        ⚠ {cvFieldFeedback[f.key === 'phone' || f.key === 'location' || f.key === 'linkedIn' ? 'contact' : f.key]}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
 
+              {/* ── Long-form fields ── */}
               {([
-                { key: 'summary',        label: t.applications.fieldSummary,        rows: 4, placeholder: t.applications.fieldSummaryPlaceholder },
-                { key: 'experience',     label: t.applications.fieldExperience,     rows: 8, placeholder: t.applications.fieldExperiencePlaceholder },
-                { key: 'education',      label: t.applications.fieldEducation,      rows: 3, placeholder: t.applications.fieldEducationPlaceholder },
-                { key: 'skills',         label: t.applications.fieldSkills,         rows: 3, placeholder: t.applications.fieldSkillsPlaceholder },
-                { key: 'languages',      label: t.applications.fieldLanguages,      rows: 2, placeholder: t.applications.fieldLanguagesPlaceholder },
-                { key: 'certifications', label: t.applications.fieldCertifications, rows: 2, placeholder: t.applications.fieldCertificationsPlaceholder },
-              ] as { key: string; label: string; rows: number; placeholder: string }[]).map(f => (
-                <div key={f.key}>
-                  <label className="block font-mono text-[10px] uppercase tracking-widest text-slate-400 mb-1.5">{f.label}</label>
+                {
+                  key: 'summary', label: t.applications.fieldSummary, rows: 5,
+                  placeholder: t.applications.fieldSummaryPlaceholder,
+                  hint: t.applications.hintSummary,
+                },
+                {
+                  key: 'experience', label: t.applications.fieldExperience, rows: 10,
+                  placeholder: t.applications.fieldExperiencePlaceholder,
+                  hint: t.applications.hintExperience,
+                },
+                {
+                  key: 'education', label: t.applications.fieldEducation, rows: 3,
+                  placeholder: t.applications.fieldEducationPlaceholder,
+                  hint: t.applications.hintEducation,
+                },
+                {
+                  key: 'skills', label: t.applications.fieldSkills, rows: 3,
+                  placeholder: t.applications.fieldSkillsPlaceholder,
+                  hint: t.applications.hintSkills,
+                },
+                {
+                  key: 'languages', label: t.applications.fieldLanguages, rows: 2,
+                  placeholder: t.applications.fieldLanguagesPlaceholder,
+                  hint: t.applications.hintLanguages,
+                },
+                {
+                  key: 'certifications', label: t.applications.fieldCertifications, rows: 2,
+                  placeholder: t.applications.fieldCertificationsPlaceholder,
+                  hint: t.applications.hintCertifications,
+                },
+              ] as { key: string; label: string; rows: number; placeholder: string; hint: string }[]).map(f => (
+                <div key={f.key} className="space-y-1.5">
+                  <label className="block font-mono text-[10px] uppercase tracking-widest text-slate-400">{f.label}</label>
                   <textarea value={baseCV[f.key as keyof BaseCV]}
-                    onChange={e => setBaseCV(p => ({ ...p, [f.key]: e.target.value }))}
+                    onChange={e => { setBaseCV(p => ({ ...p, [f.key]: e.target.value })); setCvScore(null); setCvFieldFeedback({}); }}
                     rows={f.rows} placeholder={f.placeholder}
-                    className="input-field resize-y font-mono text-[11px]" />
+                    className="input-field resize-y font-mono text-[11px] leading-relaxed" />
+                  {/* Show AI feedback if available, otherwise static ATS hint */}
+                  {cvFieldFeedback[f.key] ? (
+                    <p className="font-mono text-[9.5px] text-amber-600 dark:text-amber-400 leading-relaxed">
+                      ⚠ {cvFieldFeedback[f.key]}
+                    </p>
+                  ) : (
+                    <p className="font-mono text-[9.5px] text-slate-400 dark:text-slate-500 leading-relaxed">
+                      💡 {f.hint}
+                    </p>
+                  )}
                 </div>
               ))}
 
-              <div className="flex items-center gap-3">
-                <button onClick={saveBaseCV} disabled={cvSaving}
-                  className="btn-primary text-[11px] py-2.5 px-6 flex items-center gap-2">
+              {/* ── Evaluate + Score panel ── */}
+              <div className="border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4 bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
+                      {t.applications.cvEvalTitle}
+                    </p>
+                    <p className="font-mono text-[9.5px] text-slate-400 mt-0.5">
+                      {t.applications.cvEvalDesc}
+                    </p>
+                  </div>
+                  <button
+                    onClick={evaluateCV}
+                    disabled={cvEvalLoading || !baseCV.fullName || !baseCV.summary || !baseCV.experience}
+                    className="btn-ghost text-[10px] py-2 px-4 flex items-center gap-2 shrink-0
+                               disabled:opacity-40 disabled:cursor-not-allowed">
+                    {cvEvalLoading ? <><Spinner sm /> {t.applications.cvEvalRunning}</> : t.applications.cvEvalBtn}
+                  </button>
+                </div>
+
+                {cvScore !== null && (
+                  <div className="space-y-3">
+                    {/* Score bar */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${
+                              cvScore >= 85 ? 'bg-emerald-500' : cvScore >= 60 ? 'bg-amber-500' : 'bg-rose-500'
+                            }`}
+                            style={{ width: `${cvScore}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span className={`font-mono text-[13px] font-bold tabular-nums ${
+                        cvScore >= 85 ? 'text-emerald-600 dark:text-emerald-400'
+                        : cvScore >= 60 ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                      }`}>{cvScore}/100</span>
+                      {cvScore >= 85 && (
+                        <span className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-400/10
+                                         text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-400/20">
+                          ✓ {t.applications.cvEvalApprovedBadge}
+                        </span>
+                      )}
+                    </div>
+                    {/* Summary line */}
+                    {cvEvalSummary && (
+                      <p className="font-mono text-[10px] text-slate-500 dark:text-slate-400 italic">
+                        "{cvEvalSummary}"
+                      </p>
+                    )}
+                    {/* Required score hint */}
+                    {cvScore < 85 && (
+                      <p className="font-mono text-[9.5px] text-amber-600 dark:text-amber-400">
+                        {t.applications.cvEvalNeedMore.replace('{n}', String(85 - cvScore))}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Save button ── */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  onClick={saveBaseCV}
+                  disabled={cvSaving || !cvScore || cvScore < 85}
+                  className="btn-primary text-[11px] py-2.5 px-6 flex items-center gap-2
+                             disabled:opacity-40 disabled:cursor-not-allowed">
                   {cvSaving
                     ? <><Spinner sm /> {t.applications.savingBaseCV}</>
                     : <><IconSave /> {t.applications.saveBaseCV}</>
                   }
                 </button>
-                {cvComplete && (
+                {!cvScore && (
+                  <span className="font-mono text-[10px] text-slate-400">
+                    {t.applications.cvEvalBeforeSave}
+                  </span>
+                )}
+                {cvComplete && cvScore && cvScore >= 85 && (
                   <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                     {t.applications.baseCVComplete}

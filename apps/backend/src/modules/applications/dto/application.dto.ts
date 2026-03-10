@@ -67,3 +67,25 @@ export class ExtractCvDto {
   @ApiProperty({ description: 'Raw text extracted from the PDF' })
   @IsString() @MinLength(10) pdfText!: string;
 }
+
+// ── Evaluate Base CV (AI) ─────────────────────────────────────────────────────
+export class EvaluateCvDto {
+  @ApiProperty() @IsString() @MinLength(1) fullName!: string;
+  @ApiProperty() @IsString() @MinLength(1) email!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() phone?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() location?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() linkedIn?: string;
+  @ApiProperty() @IsString() @MinLength(10) summary!: string;
+  @ApiProperty() @IsString() @MinLength(10) experience!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() education?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() skills?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() languages?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() certifications?: string;
+}
+
+export interface CvEvaluationResult {
+  score: number; // 0-100
+  fieldFeedback: Record<string, string>; // per-field tip
+  summary: string; // overall one-liner
+  approved: boolean; // score >= 85
+}

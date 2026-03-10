@@ -125,6 +125,32 @@ export const applicationsES = {
     toastAppSaveError: 'Error al guardar postulación',
     toastFormIncomplete: 'Completa todos los campos',
 
+
+    // CV Base — ATS hints per field
+    hintFullName: 'Usa tu nombre legal completo, sin apodos. ATS busca coincidencia exacta.',
+    hintEmail: 'Usa un email profesional. Evita hotmail o emails con números raros.',
+    hintPhone: 'Incluye código de país. Ej: +52 555 123 4567',
+    hintLocation: 'Ciudad y país es suficiente. Ej: Ciudad de México, México (Remoto)',
+    hintLinkedIn: 'URL personalizada: linkedin.com/in/tu-nombre. Los ATS la indexan.',
+    hintSummary: 'Mín. 3 frases: título profesional + años de experiencia + propuesta de valor. Sin pronombres en primera persona.',
+    hintExperience: 'Formato: Empresa | Puesto | MM/AAAA – MM/AAAA. Cada logro con verbo de acción + número: "Reduje el tiempo de carga en 40%".',
+    hintEducation: 'Institución + carrera/grado + año de graduación. Los ATS filtran por palabras clave del título.',
+    hintSkills: 'Mín. 6 habilidades técnicas separadas por coma. Usa las palabras exactas de las ofertas de trabajo.',
+    hintLanguages: 'Usa niveles estándar: nativo, C1, B2, etc. Ej: Español (nativo), Inglés (C1)',
+    hintCertifications: 'Incluye nombre, emisor y año. Ej: AWS Solutions Architect — Amazon — 2024',
+
+    // CV Evaluation
+    cvEvalTitle: 'Evaluación ATS',
+    cvEvalDesc: 'La IA evalúa tu CV con criterios estrictos. Necesitas 85/100 para guardar.',
+    cvEvalBtn: '✦ Evaluar CV con IA',
+    cvEvalRunning: 'Evaluando...',
+    cvEvalApprovedBadge: 'Aprobado',
+    cvEvalApproved: '¡CV aprobado! Ya puedes guardarlo.',
+    cvEvalNeedsWork: 'El CV necesita mejoras. Revisa los campos marcados.',
+    cvEvalRequired: 'Evalúa el CV con IA primero (mínimo 85/100).',
+    cvEvalNeedMore: 'Necesitas {n} puntos más para poder guardar. Mejora los campos marcados.',
+    cvEvalBeforeSave: 'Evalúa el CV con IA para habilitarlo.',
+
     // Access denied
     accessDenied: 'No tienes acceso al módulo de Postulaciones.',
     accessDeniedDesc: 'Contacta a tu administrador para habilitar este módulo.',
@@ -240,6 +266,32 @@ export const applicationsEN = {
     toastAppSaved: 'Application saved',
     toastAppSaveError: 'Error saving application',
     toastFormIncomplete: 'Please complete all fields',
+
+
+    // CV Base — ATS hints per field
+    hintFullName: 'Use your full legal name, no nicknames. ATS systems match exact names.',
+    hintEmail: 'Use a professional email. Avoid personal emails with numbers or random domains.',
+    hintPhone: 'Include country code. E.g.: +1 555 123 4567',
+    hintLocation: 'City and country is enough. E.g.: New York, USA (Remote)',
+    hintLinkedIn: 'Use a custom URL: linkedin.com/in/your-name. ATS systems index this.',
+    hintSummary: 'Min. 3 sentences: job title + years of experience + value proposition. No first-person pronouns.',
+    hintExperience: 'Format: Company | Role | MM/YYYY – MM/YYYY. Each achievement with action verb + number: "Reduced load time by 40%".',
+    hintEducation: 'Institution + degree/field + graduation year. ATS filters by exact title keywords.',
+    hintSkills: 'Min. 6 technical skills separated by commas. Use the exact words from job postings.',
+    hintLanguages: 'Use standard levels: native, C1, B2, etc. E.g.: English (native), Spanish (C1)',
+    hintCertifications: 'Include name, issuer and year. E.g.: AWS Solutions Architect — Amazon — 2024',
+
+    // CV Evaluation
+    cvEvalTitle: 'ATS Evaluation',
+    cvEvalDesc: 'AI evaluates your CV with strict ATS criteria. You need 85/100 to save.',
+    cvEvalBtn: '✦ Evaluate CV with AI',
+    cvEvalRunning: 'Evaluating...',
+    cvEvalApprovedBadge: 'Approved',
+    cvEvalApproved: 'CV approved! You can now save it.',
+    cvEvalNeedsWork: 'The CV needs improvements. Review the flagged fields.',
+    cvEvalRequired: 'Evaluate the CV with AI first (minimum 85/100).',
+    cvEvalNeedMore: 'You need {n} more points to save. Improve the flagged fields.',
+    cvEvalBeforeSave: 'Evaluate the CV with AI to unlock saving.',
 
     accessDenied: 'You do not have access to the Applications module.',
     accessDeniedDesc: 'Contact your administrator to enable this module.',

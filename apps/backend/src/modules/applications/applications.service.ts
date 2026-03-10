@@ -10,6 +10,7 @@ import { ApplicationEntity, BaseCvEntity } from './entities/application.entity';
 import type {
   CreateApplicationDto, PatchApplicationDto,
   UpsertBaseCvDto, GenerateCvDto, ExtractCvDto,
+  EvaluateCvDto, CvEvaluationResult,
 } from './dto/application.dto';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -97,10 +98,17 @@ export class ApplicationsService {
     });
   }
 
-  async upsertBaseCV(userId: string, dto: UpsertBaseCvDto): Promise<BaseCvEntity> {
+  async upsertBaseCV(userId: string, dto: UpsertBaseCvDto & { cvScore?: number }): Promise<BaseCvEntity> {
+    // Enforce minimum quality gate — clients must evaluate before saving
+    if (typeof dto.cvScore === 'number' && dto.cvScore < 85) {
+      throw new BadRequestException(
+        `CV quality score is ${dto.cvScore}/100. A score of at least 85 is required to save.`
+      );
+    }
     let entity = await this.cvRepo.findOne({ where: { userId } });
     if (!entity) entity = this.cvRepo.create({ userId });
-    Object.assign(entity, dto);
+    const { cvScore: _ignored, ...cvData } = dto;
+    Object.assign(entity, cvData);
     return this.cvRepo.save(entity);
   }
 
@@ -231,23 +239,27 @@ export class ApplicationsService {
       ? dto.pdfText.slice(0, 8000) + '\n...[truncated]'
       : dto.pdfText;
 
-    // All curly braces in the system message are escaped as their unicode equivalents
-    // OR removed — LangChain ChatPromptTemplate throws on any {word} it doesn't know.
     const systemMessage =
-      'You are a precise CV/resume data extractor.\n' +
-      'You receive raw text extracted from a PDF CV.\n' +
-      'Return ONLY a valid JSON object with NO markdown, NO explanation, NO extra text.\n' +
-      'Required keys (use empty string if not found):\n' +
+      'You are a precise CV/resume data extractor. Extract EVERY detail from the raw PDF text.\n' +
+      'Return ONLY a valid JSON object. No markdown fences, no explanation, no extra text.\n' +
+      'Required keys (always present, use empty string if not found):\n' +
       'fullName, email, phone, location, linkedIn, summary, experience, education, skills, languages, certifications\n\n' +
-      'Rules:\n' +
-      '- experience: company name, job title, date range, key achievements per role\n' +
-      '- education: institution, degree/field, graduation year\n' +
-      '- skills: comma-separated list\n' +
+      'Extraction rules:\n' +
+      '- fullName: person full legal name\n' +
+      '- email: professional email address\n' +
+      '- phone: phone with country code if present\n' +
+      '- location: city + country or region\n' +
+      '- linkedIn: full LinkedIn profile URL if present\n' +
+      '- summary: professional summary or objective paragraph — copy verbatim if present\n' +
+      '- experience: for EACH role include: Company | Job Title | MM/YYYY – MM/YYYY, then bullet achievements. Preserve ALL roles.\n' +
+      '- education: institution, degree/field, graduation year for each entry\n' +
+      '- skills: comma-separated technical skills list\n' +
       '- languages: e.g. Spanish (native), English (C1)\n' +
-      '- All values must be plain strings\n' +
+      '- certifications: name — issuer — year for each\n' +
+      '- All values must be plain strings without special encoding\n' +
       '- Your entire response must start with {{ and end with }}';
 
-    const prompt = 'Extract all CV information from this text and return as JSON:\n\n' + esc(truncated);
+    const prompt = 'Extract all CV data from this PDF text and return as JSON. Preserve ALL work experience entries:\n\n' + esc(truncated);
 
     this.logger.log(`Extracting CV for user ${userId} — text length: ${dto.pdfText.length} chars`);
 
@@ -270,6 +282,71 @@ export class ApplicationsService {
       }
       return normalized;
     }, 2, 2000);
+  }
+
+  // ── AI: Evaluate Base CV quality for ATS ─────────────────────────────────
+  // Score rubric (to avoid infinite change loops):
+  //   summary    20pts — min 3 sentences, must include role + years + value prop
+  //   experience 30pts — min 2 roles, each with dates + 2 quantified achievements
+  //   skills     15pts — min 6 skills listed
+  //   education  10pts — institution + degree + year present
+  //   contact    10pts — fullName + email + phone + location all present
+  //   languages   5pts — at least one language with level
+  //   certifications 5pts — at least one entry
+  //   linkedIn    5pts — URL present and looks valid
+  // Total: 100pts. Approved when >= 85.
+  async evaluateBaseCV(dto: EvaluateCvDto): Promise<CvEvaluationResult> {
+    const cvText =
+      'FULL NAME: ' + esc(dto.fullName) + '\n' +
+      'EMAIL: ' + esc(dto.email) + '\n' +
+      'PHONE: ' + esc(dto.phone ?? '') + '\n' +
+      'LOCATION: ' + esc(dto.location ?? '') + '\n' +
+      'LINKEDIN: ' + esc(dto.linkedIn ?? '') + '\n\n' +
+      'SUMMARY:\n' + esc(dto.summary) + '\n\n' +
+      'EXPERIENCE:\n' + esc(dto.experience) + '\n\n' +
+      'EDUCATION:\n' + esc(dto.education ?? '') + '\n\n' +
+      'SKILLS:\n' + esc(dto.skills ?? '') + '\n\n' +
+      'LANGUAGES:\n' + esc(dto.languages ?? '') + '\n\n' +
+      'CERTIFICATIONS:\n' + esc(dto.certifications ?? '');
+
+    const systemMessage =
+      'You are a strict ATS CV evaluator. Evaluate the CV using this exact rubric — DO NOT change the rubric or be lenient:\n' +
+      'summary: 20 pts — needs min 3 sentences, job title, years of experience, and a concrete value proposition\n' +
+      'experience: 30 pts — needs min 2 roles each with company, title, date range (YYYY-YYYY), and min 2 quantified achievements per role\n' +
+      'skills: 15 pts — needs min 6 relevant technical skills\n' +
+      'education: 10 pts — needs institution, degree/field, graduation year\n' +
+      'contact: 10 pts — fullName + email + phone + location all required\n' +
+      'languages: 5 pts — at least one language with proficiency level\n' +
+      'certifications: 5 pts — at least one entry\n' +
+      'linkedIn: 5 pts — valid LinkedIn URL present\n\n' +
+      'IMPORTANT: Be strict. Do not award full points unless ALL criteria for that section are met.\n' +
+      'Do not suggest making changes that are already correct. Only flag genuine gaps.\n' +
+      'Return ONLY a JSON object with this exact shape (no markdown, no explanation):\n' +
+      '{{ "score": <integer 0-100>, "approved": <true if score>=85>, "summary": "<one sentence overall assessment>", ' +
+      '"fieldFeedback": {{ "summary": "<specific tip or empty string if ok>", "experience": "<specific tip or empty string if ok>", ' +
+      '"skills": "<tip or empty>", "education": "<tip or empty>", "contact": "<tip or empty>", ' +
+      '"languages": "<tip or empty>", "certifications": "<tip or empty>", "linkedIn": "<tip or empty>" }} }}';
+
+    const prompt = 'Evaluate this CV:\n\n' + cvText;
+
+    return withRetry(async () => {
+      const { text } = await generateText({
+        prompt,
+        systemMessage,
+        maxTokens: 800,
+        temperature: 0,
+      });
+      const parsed = extractJson<CvEvaluationResult>(text);
+      if (!parsed || typeof parsed.score !== 'number') {
+        throw new Error('AI returned invalid evaluation response');
+      }
+      return {
+        score: Math.min(100, Math.max(0, Math.round(parsed.score))),
+        approved: parsed.score >= 85,
+        summary: parsed.summary ?? '',
+        fieldFeedback: parsed.fieldFeedback ?? {},
+      };
+    }, 2, 1500);
   }
 
   // ── AI: Job search coaching feedback ─────────────────────────────────────

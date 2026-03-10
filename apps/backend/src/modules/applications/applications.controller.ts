@@ -53,6 +53,14 @@ export class ApplicationsController {
     return this.svc.extractCvFromText(user.userId, dto);
   }
 
+  @Post('base-cv/evaluate')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({ summary: 'Evaluate Base CV quality for ATS (score 0-100, approved when >= 85)' })
+  evaluateBaseCV(@CurrentUser() _user: JwtUser, @Body() dto: EvaluateCvDto) {
+    return this.svc.evaluateBaseCV(dto);
+  }
+
   @Post('feedback')
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
