@@ -84,7 +84,7 @@ export function NewApplicationForm({ cvComplete, onSaved, onGoToBaseCV, t }: Pro
     try {
       const res = await fetch('/api/applications/generate-cv', {
         method: 'POST', headers: getHeaders(),
-        body: JSON.stringify(form),
+        body: JSON.stringify({ company: form.company, position: form.position, jobOffer: form.jobOffer }),
       });
       if (!res.ok) throw new Error(((await res.json()) as { message?: string }).message ?? `HTTP ${res.status}`);
       const data = await res.json() as { atsScore: number; cvEs?: string; cvEn?: string; cvText?: string };

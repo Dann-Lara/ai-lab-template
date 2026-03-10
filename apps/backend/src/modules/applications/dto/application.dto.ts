@@ -71,6 +71,8 @@ export class GenerateCvDto {
   @ApiProperty({ description: 'Full job offer / description text' })
   @IsString() @MinLength(10) jobOffer!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() lang?: string;
+  /** Optional — ignored by generate-cv, accepted to prevent whitelist rejection */
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) appliedFrom?: string;
 }
 
 // ── Extract CV from text (PDF text already extracted client-side) ─────────────
