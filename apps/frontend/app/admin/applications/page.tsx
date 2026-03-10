@@ -297,7 +297,7 @@ export default function ApplicationsPage() {
   const { user, loading: authLoading } = useAuth(ALLOWED_ROLES);
 
 
-  const [tab, setTab] = useState<Tab>('list');
+  const [tab, setTab] = useState<Tab>('base-cv');
   const [apps, setApps] = useState<Application[]>([]);
   const [appsLoading, setAppsLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
@@ -373,6 +373,8 @@ export default function ApplicationsPage() {
       localStorage.setItem('ailab_base_cv', JSON.stringify(baseCV));
       setCvExtracted(false);
       showToast(t.applications.toastCVSaved, 'ok');
+      // If CV is now complete, take the user to the postulations list
+      if (isCVComplete(baseCV)) { setTab('list'); loadApps(); }
     } catch { showToast(t.applications.toastCVSaveError, 'err'); }
     finally { setCvSaving(false); }
   }
@@ -511,20 +513,28 @@ export default function ApplicationsPage() {
         {/* Tabs */}
         <div className="flex items-center gap-0 mb-8 border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
           {([
-            { key: 'list',      label: t.applications.tabList },
-            { key: 'new',       label: t.applications.tabNew },
-            { key: 'base-cv',   label: t.applications.tabBaseCV },
-            { key: 'dashboard', label: t.applications.tabDashboard },
-          ] as { key: Tab; label: string }[]).map(tb => (
-            <button key={tb.key} onClick={() => setTab(tb.key)}
-              className={`px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest shrink-0 -mb-px border-b-2 transition-all
-                ${tab === tb.key
-                  ? 'border-sky-500 text-sky-600 dark:text-sky-400'
-                  : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                }`}>
-              {tb.label}
-            </button>
-          ))}
+            { key: 'base-cv',   label: t.applications.tabBaseCV,   requiresCV: false },
+            { key: 'list',      label: t.applications.tabList,      requiresCV: true  },
+            { key: 'new',       label: t.applications.tabNew,       requiresCV: true  },
+            { key: 'dashboard', label: t.applications.tabDashboard, requiresCV: true  },
+          ] as { key: Tab; label: string; requiresCV: boolean }[]).map(tb => {
+            const disabled = tb.requiresCV && !cvComplete;
+            return (
+              <button key={tb.key}
+                onClick={() => !disabled && setTab(tb.key)}
+                disabled={disabled}
+                title={disabled ? t.applications.cvBaseIncomplete : undefined}
+                className={`px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest shrink-0 -mb-px border-b-2 transition-all
+                  ${disabled
+                    ? 'border-transparent text-slate-300 dark:text-slate-600 cursor-not-allowed opacity-50'
+                    : tab === tb.key
+                      ? 'border-sky-500 text-sky-600 dark:text-sky-400'
+                      : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                  }`}>
+                {tb.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* ── TAB: LIST ────────────────────────────────────────────────────── */}

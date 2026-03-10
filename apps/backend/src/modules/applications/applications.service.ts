@@ -21,21 +21,39 @@ function esc(text: string): string {
   return (text ?? '').replace(/\{/g, '(').replace(/\}/g, ')');
 }
 
-// ── Robust JSON extractor — same pattern as checklists.service ────────────────
+// ── Robust JSON extractor ────────────────────────────────────────────────────
+// Strategy: strip markdown fences, then try 3 parse approaches in order.
+// The AI sometimes returns a truncated response on the first attempt —
+// withRetry handles that. The parser must never fail on valid JSON.
 function extractJson<T>(text: string): T | null {
+  // 1. Strip markdown code fences
   const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+  // 2. Try direct parse first (ideal case: model returned clean JSON)
+  try { return JSON.parse(cleaned) as T; } catch { /* continue */ }
+
+  // 3. Find outermost {...} by scanning for balanced braces
   const start = cleaned.indexOf('{');
   if (start === -1) return null;
   let depth = 0;
+  let end = -1;
   for (let i = start; i < cleaned.length; i++) {
     if (cleaned[i] === '{') depth++;
     else if (cleaned[i] === '}') {
       depth--;
-      if (depth === 0) {
-        try { return JSON.parse(cleaned.slice(start, i + 1)) as T; } catch { break; }
-      }
+      if (depth === 0) { end = i; break; }
     }
   }
+  if (end !== -1) {
+    try { return JSON.parse(cleaned.slice(start, end + 1)) as T; } catch { /* continue */ }
+  }
+
+  // 4. Last resort: find last } and try to parse from first { to there
+  const lastClose = cleaned.lastIndexOf('}');
+  if (lastClose > start) {
+    try { return JSON.parse(cleaned.slice(start, lastClose + 1)) as T; } catch { /* fall through */ }
+  }
+
   return null;
 }
 
