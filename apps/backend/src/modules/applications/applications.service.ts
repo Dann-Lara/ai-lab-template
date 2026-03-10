@@ -293,88 +293,114 @@ export class ApplicationsService {
   //   linkedIn    5pts — URL present and looks valid
   // Total: 100pts. Approved when >= 85.
   async evaluateBaseCV(dto: EvaluateCvDto): Promise<CvEvaluationResult> {
-    const isEs = (dto.lang ?? 'es') === 'es';
+    const isEs     = (dto.lang ?? 'es') === 'es';
+    const lang     = isEs ? 'Spanish' : 'English';
+    const approved = dto.approvedFields ?? [];
 
-    // Build compact CV block — keep it short so the response budget is for JSON not input
-    const cvText =
-      'NAME: '   + esc(dto.fullName) + ' | EMAIL: ' + esc(dto.email) +
+    // Canonical rubric weights
+    const WEIGHTS: Record<string, number> = {
+      contact: 10, linkedIn: 5, summary: 20, experience: 30,
+      skills: 15, education: 10, languages: 5, certifications: 5,
+    };
+    const ALL_FIELDS = Object.keys(WEIGHTS);
+
+    // Short-circuit: everything already approved
+    if (ALL_FIELDS.every(k => approved.includes(k))) {
+      const ff: Record<string, string> = {};
+      ALL_FIELDS.forEach(k => { ff[k] = ''; });
+      return { score: 100, approved: true, summary: '', fieldFeedback: ff };
+    }
+
+    const lockedScore   = approved.reduce((sum, k) => sum + (WEIGHTS[k] ?? 0), 0);
+    const pendingFields = ALL_FIELDS.filter(k => !approved.includes(k));
+
+    // Build CV block - only include sections still pending (saves tokens)
+    const cvLines: string[] = [
+      'NAME: ' + esc(dto.fullName) + ' | EMAIL: ' + esc(dto.email) +
       ' | PHONE: ' + esc(dto.phone ?? '') + ' | LOC: ' + esc(dto.location ?? '') +
-      ' | LI: '  + esc(dto.linkedIn ?? '') + '\n' +
-      'SUMMARY: '  + esc((dto.summary        ?? '').slice(0, 600)) + '\n' +
-      'EXPERIENCE: ' + esc((dto.experience   ?? '').slice(0, 1200)) + '\n' +
-      'EDUCATION: ' + esc((dto.education     ?? '').slice(0, 400)) + '\n' +
-      'SKILLS: '   + esc((dto.skills         ?? '').slice(0, 300)) + '\n' +
-      'LANGUAGES: ' + esc((dto.languages     ?? '').slice(0, 200)) + '\n' +
-      'CERTS: '    + esc((dto.certifications ?? '').slice(0, 300));
+      ' | LI: ' + esc(dto.linkedIn ?? ''),
+    ];
+    if (pendingFields.includes('summary'))        cvLines.push('SUMMARY: '    + esc((dto.summary        ?? '').slice(0, 600)));
+    if (pendingFields.includes('experience'))     cvLines.push('EXPERIENCE: ' + esc((dto.experience     ?? '').slice(0, 1200)));
+    if (pendingFields.includes('education'))      cvLines.push('EDUCATION: '  + esc((dto.education      ?? '').slice(0, 400)));
+    if (pendingFields.includes('skills'))         cvLines.push('SKILLS: '     + esc((dto.skills         ?? '').slice(0, 300)));
+    if (pendingFields.includes('languages'))      cvLines.push('LANGUAGES: '  + esc((dto.languages      ?? '').slice(0, 200)));
+    if (pendingFields.includes('certifications')) cvLines.push('CERTS: '      + esc((dto.certifications ?? '').slice(0, 300)));
 
-    // Rubric: summary20|experience30|skills15|education10|contact10|languages5|certs5|linkedin5
-    // Each fieldFeedback value: ONE short sentence in the requested language, or "" if ok.
-    // CRITICAL: keep feedback under 12 words each so the total JSON fits in the token budget.
-    const lang = isEs ? 'Spanish' : 'English';
+    const RUBRIC: Record<string, string> = {
+      contact:        'contact:10 - fullName+email+phone+location all present',
+      linkedIn:       'linkedIn:5 - valid linkedin.com URL present',
+      summary:        'summary:20 - min 3 sentences, has job title+years+value prop',
+      experience:     'experience:30 - min 2 roles each with company+title+YYYY-YYYY+2 quantified achievements',
+      skills:         'skills:15 - min 6 technical skills listed',
+      education:      'education:10 - institution+degree+year present',
+      languages:      'languages:5 - at least one entry with proficiency level',
+      certifications: 'certifications:5 - at least one entry with name and year',
+    };
+
+    const rubricLines  = pendingFields.map(k => RUBRIC[k]).filter(Boolean).join('\n');
+    const approvedNote = approved.length > 0
+      ? 'FROZEN fields (already approved - keep full pts, feedback MUST be ""): ' + approved.join(', ') + '\n\n'
+      : '';
+
+    // fieldFeedback template with all keys preset to ""
+    const ffTemplate: Record<string, string> = {};
+    ALL_FIELDS.forEach(k => { ffTemplate[k] = ''; });
+
     const systemMessage =
-      'You are a strict ATS CV scorer. Reply ONLY with raw JSON — zero markdown, zero explanation.\n' +
-      'Language for all text fields: ' + lang + '\n\n' +
-      'RUBRIC (100 pts total — be strict, do not round up):\n' +
-      'contact:10 — fullName+email+phone+location all present\n' +
-      'linkedIn:5 — valid linkedin.com URL present\n' +
-      'summary:20 — min 3 sentences, has job title + years + value prop\n' +
-      'experience:30 — min 2 roles each with company+title+YYYY-YYYY+2 quantified achievements\n' +
-      'skills:15 — min 6 technical skills listed\n' +
-      'education:10 — institution+degree+year\n' +
-      'languages:5 — at least one with level\n' +
-      'certifications:5 — at least one with name+year\n\n' +
-      'RULES:\n' +
-      '- Full pts if ALL criteria met; 0 if nothing; partial otherwise\n' +
-      '- fieldFeedback: empty string "" if section is ok; else ONE sentence max 10 words in ' + lang + '\n' +
-      '- summary field in output: ONE sentence max 12 words in ' + lang + '\n' +
-      '- Do NOT invent or assume missing info\n\n' +
-      'OUTPUT — exactly this JSON shape, no extra keys:\n' +
-      '{"score":0,"approved":false,"summary":"","fieldFeedback":{"contact":"","linkedIn":"","summary":"","experience":"","skills":"","education":"","languages":"","certifications":""}';
+      'You are a strict ATS CV scorer. Reply ONLY with raw JSON - zero markdown.\n' +
+      'Language for all feedback text: ' + lang + '\n\n' +
+      approvedNote +
+      'RUBRIC for PENDING fields:\n' + rubricLines + '\n\n' +
+      'SCORING:\n' +
+      '- Pending fields: full pts if ALL criteria met; 0 if none; partial otherwise\n' +
+      '- Frozen fields always score full points (already locked in)\n' +
+      '- Total = sum of frozen (' + lockedScore + ' pts locked) + pending field scores\n' +
+      '- fieldFeedback for frozen fields MUST be ""\n' +
+      '- fieldFeedback for pending: "" if met; else ONE sentence max 10 words in ' + lang + '\n' +
+      '- summary (output): ONE sentence max 12 words in ' + lang + '\n' +
+      '- Do NOT invent info\n\n' +
+      'OUTPUT (no extra keys):\n' +
+      JSON.stringify({ score: 0, approved: false, summary: '', fieldFeedback: ffTemplate });
 
-    const prompt = 'SCORE THIS CV:\n' + cvText;
+    const prompt = 'EVALUATE:\n' + cvLines.join('\n');
 
     return withRetry(async () => {
-      const { text } = await generateText({
-        prompt,
-        systemMessage,
-        maxTokens: 500,
-        temperature: 0,
-      });
+      const { text } = await generateText({ prompt, systemMessage, maxTokens: 500, temperature: 0 });
 
-      this.logger.debug('[evaluateBaseCV] raw AI response: ' + text.slice(0, 400));
+      this.logger.debug('[evaluateBaseCV] raw: ' + text.slice(0, 400));
 
       const parsed = extractJson<CvEvaluationResult>(text);
 
-      // Graceful recovery: if we got a score but the JSON was otherwise malformed,
-      // build a safe partial result rather than throwing and retrying.
       if (!parsed) {
-        // Try to salvage just the score from the raw text
-        const scoreMatch = text.match(/"score"\s*:\s*(\d+)/);
-        if (scoreMatch) {
-          const score = Math.min(100, Math.max(0, parseInt(scoreMatch[1], 10)));
-          this.logger.warn('[evaluateBaseCV] JSON parse failed but salvaged score=' + score);
-          return { score, approved: score >= 85, summary: '', fieldFeedback: {} };
+        const m = text.match(/"score"\s*:\s*(\d+)/);
+        if (m) {
+          const score = Math.min(100, Math.max(0, parseInt(m[1], 10)));
+          this.logger.warn('[evaluateBaseCV] salvaged score=' + score);
+          return { score, approved: score >= 85, summary: '', fieldFeedback: ffTemplate };
         }
-        this.logger.error('[evaluateBaseCV] Unparseable response: ' + text.slice(0, 300));
+        this.logger.error('[evaluateBaseCV] unparseable: ' + text.slice(0, 300));
         throw new Error('AI returned unparseable evaluation response');
       }
 
-      if (typeof parsed.score !== 'number') {
-        throw new Error('AI evaluation missing score field');
-      }
+      if (typeof parsed.score !== 'number') throw new Error('AI evaluation missing score field');
+
+      // Enforce: frozen fields must always have empty feedback
+      const ff = (parsed.fieldFeedback && typeof parsed.fieldFeedback === 'object')
+        ? { ...ffTemplate, ...parsed.fieldFeedback }
+        : { ...ffTemplate };
+      approved.forEach(k => { ff[k] = ''; });
 
       return {
         score:         Math.min(100, Math.max(0, Math.round(parsed.score))),
         approved:      parsed.score >= 85,
         summary:       typeof parsed.summary === 'string' ? parsed.summary : '',
-        fieldFeedback: (parsed.fieldFeedback && typeof parsed.fieldFeedback === 'object')
-                         ? parsed.fieldFeedback
-                         : {},
+        fieldFeedback: ff,
       };
     }, 2, 1500);
   }
 
-  // ── AI: Job search coaching feedback ─────────────────────────────────────
+    // ── AI: Job search coaching feedback ─────────────────────────────────────
 
   async generateFeedback(userId: string): Promise<{ feedback: string }> {
     const apps = await this.findAll(userId);

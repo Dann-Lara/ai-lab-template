@@ -151,6 +151,13 @@ export const applicationsES = {
     cvEvalNeedMore: 'Necesitas {n} puntos más para poder guardar. Mejora los campos marcados.',
     cvEvalBeforeSave: 'Evalúa el CV con IA para habilitarlo.',
     downloadBaseCV: 'Descargar CV Base',
+    fieldUnlock: 'Editar',
+    fieldGroupContact: 'Contacto',
+    fieldGroupOk: 'Todo completo',
+    legendOk: 'Completo',
+    legendWarn: 'Mejorar',
+    legendError: 'Falta',
+    legendFieldsOk: 'campos aprobados',
 
     // Access denied
     accessDenied: 'No tienes acceso al módulo de Postulaciones.',
@@ -294,6 +301,13 @@ export const applicationsEN = {
     cvEvalNeedMore: 'You need {n} more points to save. Improve the flagged fields.',
     cvEvalBeforeSave: 'Evaluate the CV with AI to unlock saving.',
     downloadBaseCV: 'Download Base CV',
+    fieldUnlock: 'Edit',
+    fieldGroupContact: 'Contact',
+    fieldGroupOk: 'All complete',
+    legendOk: 'Complete',
+    legendWarn: 'Improve',
+    legendError: 'Missing',
+    legendFieldsOk: 'fields approved',
 
     accessDenied: 'You do not have access to the Applications module.',
     accessDeniedDesc: 'Contact your administrator to enable this module.',

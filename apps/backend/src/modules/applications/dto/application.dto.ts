@@ -1,5 +1,5 @@
 import {
-  IsEnum, IsInt, IsNumber, IsOptional, IsString,
+  IsArray, IsEnum, IsInt, IsNumber, IsOptional, IsString,
   Max, MaxLength, Min, MinLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -85,6 +85,12 @@ export class EvaluateCvDto {
   @ApiPropertyOptional() @IsOptional() @IsString() certifications?: string;
   /** UI language — 'es' or 'en'. AI feedback will be in this language. */
   @ApiPropertyOptional() @IsOptional() @IsString() lang?: string;
+  /**
+   * Fields already approved in a prior evaluation.
+   * The evaluator must keep their score and set their feedback to "".
+   * Accepted keys: contact | linkedIn | summary | experience | skills | education | languages | certifications
+   */
+  @ApiPropertyOptional() @IsOptional() @IsArray() @IsString({ each: true }) approvedFields?: string[];
 }
 
 export interface CvEvaluationResult {
