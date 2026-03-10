@@ -16,6 +16,28 @@ const IconChevron = ({ open }: { open: boolean }) => (
   </svg>
 );
 
+const IconFlagES = () => (
+  <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+    <rect width="16" height="12" rx="1.5" fill="#AA151B"/>
+    <rect y="2.5" width="16" height="7" fill="#F1BF00"/>
+    <rect y="2.5" width="16" height="1.2" fill="#AA151B"/>
+    <rect y="8.3" width="16" height="1.2" fill="#AA151B"/>
+  </svg>
+);
+const IconFlagEN = () => (
+  <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+    <rect width="16" height="12" rx="1.5" fill="#012169"/>
+    <line x1="0" y1="0" x2="16" y2="12" stroke="white" strokeWidth="2.5"/>
+    <line x1="16" y1="0" x2="0" y2="12" stroke="white" strokeWidth="2.5"/>
+    <line x1="8" y1="0" x2="8" y2="12" stroke="white" strokeWidth="3.5"/>
+    <line x1="0" y1="6" x2="16" y2="6" stroke="white" strokeWidth="3.5"/>
+    <line x1="0" y1="0" x2="16" y2="12" stroke="#C8102E" strokeWidth="1.5"/>
+    <line x1="16" y1="0" x2="0" y2="12" stroke="#C8102E" strokeWidth="1.5"/>
+    <line x1="8" y1="0" x2="8" y2="12" stroke="#C8102E" strokeWidth="2"/>
+    <line x1="0" y1="6" x2="16" y2="6" stroke="#C8102E" strokeWidth="2"/>
+  </svg>
+);
+
 function printATS(cvText: string, lang: 'es' | 'en', position: string, company: string) {
   const win = window.open('', '_blank');
   if (!win) return;
@@ -130,7 +152,7 @@ export function AppCard({ app, onStatusChange, onDelete, t }: {
                   ${cvLang === lng
                     ? 'border-sky-500 text-sky-600 dark:text-sky-400'
                     : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
-                {lng === 'es' ? '🇪🇸 ES' : '🇺🇸 EN'}
+                <span className="flex items-center gap-1.5">{lng === 'es' ? <><IconFlagES /><span>ES</span></> : <><IconFlagEN /><span>EN</span></>}</span>
               </button>
             ))}
           </div>
@@ -145,12 +167,12 @@ export function AppCard({ app, onStatusChange, onDelete, t }: {
             <button onClick={() => printATS(app.cvGeneratedEs ?? '', 'es', app.position, app.company)}
               disabled={!app.cvGeneratedEs}
               className="btn-ghost text-[9.5px] py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-40">
-              <IconDownload /> PDF ES (ATS)
+              <IconDownload /><IconFlagES /> PDF ES (ATS)
             </button>
             <button onClick={() => printATS(app.cvGeneratedEn ?? '', 'en', app.position, app.company)}
               disabled={!app.cvGeneratedEn}
               className="btn-ghost text-[9.5px] py-1.5 px-3 flex items-center gap-1.5 disabled:opacity-40">
-              <IconDownload /> PDF EN (ATS)
+              <IconDownload /><IconFlagEN /> PDF EN (ATS)
             </button>
           </div>
         </div>

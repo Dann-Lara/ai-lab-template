@@ -48,6 +48,12 @@ export const applicationsES = {
     generatingStep3: '3. Generando versión en español e inglés...',
     atsCompliantNote: 'PDF 100% legible por ATS (sin tablas, columnas ni gráficos)',
     saveAppHint: 'Guarda la postulación con ambas versiones del CV.',
+    cvEditHint: 'Podés editar el CV directamente. El PDF y el guardado usarán esta versión.',
+    cvEdited: 'Editado',
+    cvHumanEdited: 'Revisado por vos',
+    pdfExportEs: 'PDF Español (ATS)',
+    pdfExportEn: 'PDF Inglés (ATS)',
+    saveAppHintEdited: 'Se guardará tu versión editada.',
 
     // New application tab
     cvRequiredTitle: 'CV Base requerido',
@@ -222,6 +228,12 @@ export const applicationsEN = {
     generatingStep3: '3. Generating Spanish and English versions...',
     atsCompliantNote: 'PDF 100% ATS-readable (no tables, columns or graphics)',
     saveAppHint: 'Saves the application with both CV versions.',
+    cvEditHint: 'You can edit the CV directly. The PDF and save will use this version.',
+    cvEdited: 'Edited',
+    cvHumanEdited: 'Reviewed by you',
+    pdfExportEs: 'PDF Spanish (ATS)',
+    pdfExportEn: 'PDF English (ATS)',
+    saveAppHintEdited: 'Your edited version will be saved.',
 
     cvRequiredTitle: 'Base CV required',
     cvRequiredDesc: 'Complete your Base CV before creating an application. AI will use it to generate a 100% ATS-optimized CV tailored to each offer.',
