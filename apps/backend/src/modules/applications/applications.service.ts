@@ -304,18 +304,16 @@ export class ApplicationsService {
     const isEs   = (lang ?? 'es') === 'es';
     const langTx = isEs ? 'Spanish' : 'English';
 
-    // Compose CV context block
+    // Use the tailored CV as primary context — it already contains all base CV info
+    // adapted for this role. Add only the extra fields for inference completeness.
+    const tailoredCv = esc(((app.cvGeneratedEs ?? app.cvGeneratedEn) ?? '').slice(0, 3500));
     const cvContext =
-      '=== BASE CV ===\n' +
-      'Name: ' + esc(baseCV.fullName) + ' | Email: ' + esc(baseCV.email) + '\n' +
-      'Summary: ' + esc((baseCV.summary ?? '').slice(0, 800)) + '\n' +
-      'Experience: ' + esc((baseCV.experience ?? '').slice(0, 1500)) + '\n' +
-      'Skills: ' + esc((baseCV.skills ?? '').slice(0, 400)) + '\n' +
-      'Education: ' + esc((baseCV.education ?? '').slice(0, 400)) + '\n' +
-      'Languages: ' + esc(baseCV.languages ?? '') + '\n' +
-      'Certs: ' + esc((baseCV.certifications ?? '').slice(0, 300)) + '\n\n' +
-      '=== TAILORED CV (for ' + esc(app.position) + ' @ ' + esc(app.company) + ') ===\n' +
-      esc(((app.cvGeneratedEs ?? app.cvGeneratedEn) ?? '').slice(0, 2000));
+      '=== TAILORED CV for ' + esc(app.position) + ' @ ' + esc(app.company) + ' ===\n' +
+      tailoredCv + '\n\n' +
+      '=== ADDITIONAL CONTEXT ===\n' +
+      'SKILLS (full): ' + esc((baseCV.skills ?? '').slice(0, 500)) + '\n' +
+      'LANGUAGES: ' + esc(baseCV.languages ?? '') + '\n' +
+      'CERTS: ' + esc((baseCV.certifications ?? '').slice(0, 300));
 
     // Technical doc context for superadmin
     const techContext = userRole === 'superadmin'
@@ -342,9 +340,11 @@ export class ApplicationsService {
       '- NEVER invent specific company names, projects, or numbers not in the CV\n' +
       '- If a question cannot be answered from CV context, give a genuine best-effort answer that fits the profile\n\n' +
       'FORMAT:\n' +
-      '- Answer each question clearly, numbered to match\n' +
-      '- Each answer: 2-4 sentences, professional but natural tone\n' +
+      '- CRITICAL: answer EVERY question — do NOT stop early or truncate\n' +
+      '- Answer each question clearly, numbered to match the input\n' +
+      '- Each answer: 2-5 sentences, professional but natural tone\n' +
       '- Use first person ("I have..." / "En mi experiencia...")\n' +
+      '- If there are many questions, keep each answer concise (3 sentences) so you can complete all of them\n' +
       '- Language: ' + langTx + '\n\n' +
       'CV CONTEXT:\n' + cvContext + techContext;
 
@@ -355,7 +355,7 @@ export class ApplicationsService {
 
     return withRetry(async () => {
       const { text } = await generateText({
-        prompt, systemMessage, maxTokens: 3000, temperature: 0.4,
+        prompt, systemMessage, maxTokens: 6000, temperature: 0.4,
       });
       // Strip any accidental markdown
       const clean = text.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
