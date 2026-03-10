@@ -23,38 +23,30 @@ function esc(text: string): string {
 }
 
 // ── Robust JSON extractor ────────────────────────────────────────────────────
-// Strategy: strip markdown fences, then try 3 parse approaches in order.
-// The AI sometimes returns a truncated response on the first attempt —
-// withRetry handles that. The parser must never fail on valid JSON.
 function extractJson<T>(text: string): T | null {
-  // 1. Strip markdown code fences
-  const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  // Strip all markdown fences (Gemini loves wrapping in ```json ... ```)
+  let s = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
 
-  // 2. Try direct parse first (ideal case: model returned clean JSON)
-  try { return JSON.parse(cleaned) as T; } catch { /* continue */ }
+  // Direct parse (clean response)
+  try { return JSON.parse(s) as T; } catch { /* continue */ }
 
-  // 3. Find outermost {...} by scanning for balanced braces
-  const start = cleaned.indexOf('{');
+  // Locate outermost { ... } by balanced brace scan
+  const start = s.indexOf('{');
   if (start === -1) return null;
-  let depth = 0;
-  let end = -1;
-  for (let i = start; i < cleaned.length; i++) {
-    if (cleaned[i] === '{') depth++;
-    else if (cleaned[i] === '}') {
-      depth--;
-      if (depth === 0) { end = i; break; }
-    }
+  let depth = 0, end = -1;
+  for (let i = start; i < s.length; i++) {
+    if (s[i] === '{') depth++;
+    else if (s[i] === '}') { if (--depth === 0) { end = i; break; } }
   }
   if (end !== -1) {
-    try { return JSON.parse(cleaned.slice(start, end + 1)) as T; } catch { /* continue */ }
+    try { return JSON.parse(s.slice(start, end + 1)) as T; } catch { /* continue */ }
   }
 
-  // 4. Last resort: find last } and try to parse from first { to there
-  const lastClose = cleaned.lastIndexOf('}');
-  if (lastClose > start) {
-    try { return JSON.parse(cleaned.slice(start, lastClose + 1)) as T; } catch { /* fall through */ }
+  // Last resort: first { to last }
+  const last = s.lastIndexOf('}');
+  if (last > start) {
+    try { return JSON.parse(s.slice(start, last + 1)) as T; } catch { /* fall through */ }
   }
-
   return null;
 }
 
@@ -171,17 +163,18 @@ export class ApplicationsService {
     // NO curly braces allowed in the literal text — LangChain treats them as template vars.
     // User-supplied data is escaped via esc() which converts { } to ( ).
     const systemMessage =
-      'You are an expert ATS CV optimizer.\n' +
-      'You receive a candidate base CV and a job offer, and produce a fully optimized ATS CV.\n' +
-      'Rules:\n' +
-      '1. Incorporate exact keywords from the job offer naturally.\n' +
-      '2. Reorder and emphasize the most relevant experience.\n' +
-      '3. Adapt the professional summary specifically for this role.\n' +
-      '4. NEVER invent data - only reorganize and optimize existing information.\n' +
-      '5. Use clean plain-text format suitable for ATS parsers (no tables, columns or graphics).\n' +
-      '6. Calculate an ATS Match Score from 0 to 100 based on keyword overlap and relevance.\n\n' +
-      'Respond with ONLY a valid JSON object - no markdown, no explanation:\n' +
-      '{"atsScore":<integer 0-100>,"cvText":"<full optimized CV as plain text>"}';
+      'You are an expert ATS CV optimizer. Your goal: produce a CV with 90-100% keyword match to the job offer WITHOUT inventing any data.\n' +
+      'RULES (strictly enforced):\n' +
+      '1. Use the EXACT technical keywords, tools, and phrases from the job offer — embed them naturally in summary, skills and experience.\n' +
+      '2. Reorder work experience bullets to prioritize what the job offer values most.\n' +
+      '3. Rewrite the professional summary to mirror the role title and top 3 requirements.\n' +
+      '4. NEVER add skills, companies, degrees or certifications not present in the base CV.\n' +
+      '5. Expand abbreviations if the job offer uses full words (e.g. JS → JavaScript).\n' +
+      '6. Format for ATS parsers: plain text only, no tables, columns, icons or graphics.\n' +
+      '7. Structure: Name/Contact → Summary → Experience → Education → Skills → Languages → Certifications.\n' +
+      '8. Calculate ATS Match Score 0-100 based on keyword overlap between the CV output and job offer.\n\n' +
+      'Respond with ONLY raw JSON — no markdown, no backticks:\n' +
+      '{"atsScore":<integer 0-100>,"cvText":"<full optimized CV as plain text with \\n newlines>"}';
 
     const cvBlock =
       'Name: ' + esc(baseCV.fullName) + '\n' +
@@ -309,31 +302,39 @@ export class ApplicationsService {
       'LANGUAGES:\n' + esc(dto.languages ?? '') + '\n\n' +
       'CERTIFICATIONS:\n' + esc(dto.certifications ?? '');
 
+    // Evaluation rubric (fixed, non-negotiable):
+    // summary 20 | experience 30 | skills 15 | education 10 | contact 10 | languages 5 | certifications 5 | linkedIn 5
+    // Feedback rules: max 1 actionable sentence per field, only if genuinely missing/incomplete.
+    // If a section is acceptable, fieldFeedback value must be an empty string "".
+    // This prevents infinite improvement loops.
     const systemMessage =
-      'You are a strict ATS CV evaluator. Evaluate the CV using this exact rubric — DO NOT change the rubric or be lenient:\n' +
-      'summary: 20 pts — needs min 3 sentences, job title, years of experience, and a concrete value proposition\n' +
-      'experience: 30 pts — needs min 2 roles each with company, title, date range (YYYY-YYYY), and min 2 quantified achievements per role\n' +
-      'skills: 15 pts — needs min 6 relevant technical skills\n' +
-      'education: 10 pts — needs institution, degree/field, graduation year\n' +
-      'contact: 10 pts — fullName + email + phone + location all required\n' +
-      'languages: 5 pts — at least one language with proficiency level\n' +
-      'certifications: 5 pts — at least one entry\n' +
-      'linkedIn: 5 pts — valid LinkedIn URL present\n\n' +
-      'IMPORTANT: Be strict. Do not award full points unless ALL criteria for that section are met.\n' +
-      'Do not suggest making changes that are already correct. Only flag genuine gaps.\n' +
-      'Return ONLY a JSON object with this exact shape (no markdown, no explanation):\n' +
-      '{{ "score": <integer 0-100>, "approved": <true if score>=85>, "summary": "<one sentence overall assessment>", ' +
-      '"fieldFeedback": {{ "summary": "<specific tip or empty string if ok>", "experience": "<specific tip or empty string if ok>", ' +
-      '"skills": "<tip or empty>", "education": "<tip or empty>", "contact": "<tip or empty>", ' +
-      '"languages": "<tip or empty>", "certifications": "<tip or empty>", "linkedIn": "<tip or empty>" }} }}';
+      'You are an ATS CV evaluator. Score this CV using the fixed rubric below. Do not invent criteria.\n' +
+      'RUBRIC (total 100 pts):\n' +
+      '- summary: 20 pts. Full points if: min 3 sentences, contains job title, years of experience, and value proposition.\n' +
+      '- experience: 30 pts. Full points if: min 2 complete roles each with company, title, YYYY–YYYY dates, and min 2 quantified achievements.\n' +
+      '- skills: 15 pts. Full points if: min 6 technical skills listed.\n' +
+      '- education: 10 pts. Full points if: institution + degree + graduation year present.\n' +
+      '- contact: 10 pts. Full points if: fullName, email, phone AND location are all non-empty.\n' +
+      '- languages: 5 pts. Full points if: at least one language with level (e.g. English C1).\n' +
+      '- certifications: 5 pts. Full points if: at least one entry with name and year.\n' +
+      '- linkedIn: 5 pts. Full points if: a linkedin.com URL is present.\n\n' +
+      'RULES:\n' +
+      '1. If a criterion is met, award full points and set fieldFeedback to "".\n' +
+      '2. If a criterion is partially met, deduct proportionally and write ONE sentence of feedback (max 15 words).\n' +
+      '3. If a criterion is not met at all, award 0 and write ONE sentence of feedback (max 15 words).\n' +
+      '4. Do not suggest improvements beyond the rubric. Do not hallucinate missing info.\n' +
+      '5. Respond with ONLY raw JSON — no markdown, no backticks, no explanation.\n' +
+      'JSON shape: {{ "score": <0-100>, "approved": <true if score>=85>, "summary": "<max 20 words>", ' +
+      '"fieldFeedback": {{ "summary": "", "experience": "", "skills": "", "education": "", ' +
+      '"contact": "", "languages": "", "certifications": "", "linkedIn": "" }} }}';
 
-    const prompt = 'Evaluate this CV:\n\n' + cvText;
+    const prompt = 'Score this CV:\n\n' + cvText;
 
     return withRetry(async () => {
       const { text } = await generateText({
         prompt,
         systemMessage,
-        maxTokens: 800,
+        maxTokens: 600,
         temperature: 0,
       });
       const parsed = extractJson<CvEvaluationResult>(text);

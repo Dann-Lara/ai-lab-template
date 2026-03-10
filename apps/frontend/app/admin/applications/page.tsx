@@ -305,6 +305,7 @@ export default function ApplicationsPage() {
   const [baseCV, setBaseCV] = useState<BaseCV>(EMPTY_CV);
   const [cvSaving, setCvSaving] = useState(false);
   const [cvExtracted, setCvExtracted] = useState(false);
+  const [cvSaved, setCvSaved] = useState(false);
   const [cvEvalLoading, setCvEvalLoading] = useState(false);
   const [cvScore, setCvScore] = useState<number | null>(null);
   const [cvEvalSummary, setCvEvalSummary] = useState('');
@@ -364,12 +365,12 @@ export default function ApplicationsPage() {
     }
   }, [authLoading, user, loadApps, loadBaseCV]);
 
-  async function evaluateCV() {
+  async function evaluateCV(cvOverride?: BaseCV) {
     setCvEvalLoading(true);
     try {
       const res = await fetch('/api/applications/base-cv/evaluate', {
         method: 'POST', headers: getHeaders(),
-        body: JSON.stringify(baseCV),
+        body: JSON.stringify(cvOverride ?? baseCV),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { score: number; summary: string; fieldFeedback: Record<string, string>; approved: boolean };
@@ -383,6 +384,25 @@ export default function ApplicationsPage() {
     } finally {
       setCvEvalLoading(false);
     }
+  }
+
+  function downloadBaseCV() {
+    const lines = [
+      baseCV.fullName, baseCV.email, baseCV.phone,
+      baseCV.location, baseCV.linkedIn, '',
+      'RESUMEN PROFESIONAL', baseCV.summary, '',
+      'EXPERIENCIA', baseCV.experience, '',
+      'EDUCACIÓN', baseCV.education, '',
+      'HABILIDADES', baseCV.skills, '',
+      'IDIOMAS', baseCV.languages, '',
+      'CERTIFICACIONES', baseCV.certifications,
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (baseCV.fullName || 'cv-base').replace(/\s+/g, '-').toLowerCase() + '-cv-base.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   async function saveBaseCV() {
@@ -402,6 +422,7 @@ export default function ApplicationsPage() {
       localStorage.setItem('ailab_base_cv', JSON.stringify(baseCV));
       setCvExtracted(false);
       showToast(t.applications.toastCVSaved, 'ok');
+      setCvSaved(true);
       // If CV is now complete, take the user to the postulations list
       if (isCVComplete(baseCV)) { setTab('list'); loadApps(); }
     } catch { showToast(t.applications.toastCVSaveError, 'err'); }
@@ -409,9 +430,15 @@ export default function ApplicationsPage() {
   }
 
   function handlePdfExtracted(extracted: Partial<BaseCV>) {
-    setBaseCV(prev => ({ ...prev, ...extracted }));
+    const merged = { ...EMPTY_CV, ...extracted };
+    setBaseCV(merged);
     setCvExtracted(true);
+    setCvScore(null); setCvFieldFeedback({}); setCvSaved(false);
     showToast(t.applications.toastPDFExtractOK, 'ok');
+    // Auto-evaluate immediately after PDF extraction so user sees field feedback right away
+    if (merged.fullName && merged.summary && merged.experience) {
+      setTimeout(() => evaluateCV(merged), 300);
+    }
   }
 
   async function updateStatus(id: string, status: AppStatus) {
@@ -503,7 +530,7 @@ export default function ApplicationsPage() {
   return (
     <DashboardLayout variant={variant} user={user} title={t.applications.pageTitle}>
       <PermissionGate module="applications">
-      <div className="max-w-5xl mx-auto px-6 md:px-10 py-10">
+      <div className="max-w-[1400px] mx-auto px-6 md:px-12 pt-8 pb-16">
 
         {/* Header */}
         <div ref={headerRef} className="mb-8">
@@ -737,16 +764,16 @@ export default function ApplicationsPage() {
                   <div key={f.key} className="space-y-1">
                     <label className="block font-mono text-[10px] uppercase tracking-widest text-slate-400">{f.label}</label>
                     <input value={baseCV[f.key as keyof BaseCV]}
-                      onChange={e => { setBaseCV(p => ({ ...p, [f.key]: e.target.value })); setCvScore(null); setCvFieldFeedback({}); }}
+                      onChange={e => { setBaseCV(p => ({ ...p, [f.key]: e.target.value })); setCvScore(null); setCvFieldFeedback({}); setCvSaved(false); }}
                       className="input-field" />
                     {/* ATS hack tip */}
                     {!cvFieldFeedback[f.key === 'phone' || f.key === 'location' || f.key === 'linkedIn' ? 'contact' : f.key] ? (
                       <p className="font-mono text-[9.5px] text-slate-400 dark:text-slate-500 leading-relaxed">
-                        💡 {f.hint}
+                        <svg className="inline w-3 h-3 mr-1 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{f.hint}
                       </p>
                     ) : (
                       <p className="font-mono text-[9.5px] text-amber-600 dark:text-amber-400 leading-relaxed">
-                        ⚠ {cvFieldFeedback[f.key === 'phone' || f.key === 'location' || f.key === 'linkedIn' ? 'contact' : f.key]}
+                        <svg className="inline w-3 h-3 mr-1 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>{cvFieldFeedback[f.key === 'phone' || f.key === 'location' || f.key === 'linkedIn' ? 'contact' : f.key]}
                       </p>
                     )}
                   </div>
@@ -789,17 +816,17 @@ export default function ApplicationsPage() {
                 <div key={f.key} className="space-y-1.5">
                   <label className="block font-mono text-[10px] uppercase tracking-widest text-slate-400">{f.label}</label>
                   <textarea value={baseCV[f.key as keyof BaseCV]}
-                    onChange={e => { setBaseCV(p => ({ ...p, [f.key]: e.target.value })); setCvScore(null); setCvFieldFeedback({}); }}
+                    onChange={e => { setBaseCV(p => ({ ...p, [f.key]: e.target.value })); setCvScore(null); setCvFieldFeedback({}); setCvSaved(false); }}
                     rows={f.rows} placeholder={f.placeholder}
                     className="input-field resize-y font-mono text-[11px] leading-relaxed" />
                   {/* Show AI feedback if available, otherwise static ATS hint */}
                   {cvFieldFeedback[f.key] ? (
                     <p className="font-mono text-[9.5px] text-amber-600 dark:text-amber-400 leading-relaxed">
-                      ⚠ {cvFieldFeedback[f.key]}
+                      <svg className="inline w-3 h-3 mr-1 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>{cvFieldFeedback[f.key]}
                     </p>
                   ) : (
                     <p className="font-mono text-[9.5px] text-slate-400 dark:text-slate-500 leading-relaxed">
-                      💡 {f.hint}
+                      <svg className="inline w-3 h-3 mr-1 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{f.hint}
                     </p>
                   )}
                 </div>
@@ -867,8 +894,8 @@ export default function ApplicationsPage() {
                 )}
               </div>
 
-              {/* ── Save button ── */}
-              <div className="flex items-center gap-3 pt-2">
+              {/* ── Save + Download buttons ── */}
+              <div className="flex items-center gap-3 pt-2 flex-wrap">
                 <button
                   onClick={saveBaseCV}
                   disabled={cvSaving || !cvScore || cvScore < 85}
@@ -879,7 +906,19 @@ export default function ApplicationsPage() {
                     : <><IconSave /> {t.applications.saveBaseCV}</>
                   }
                 </button>
-                {!cvScore && (
+                {cvSaved && (
+                  <button
+                    onClick={downloadBaseCV}
+                    className="btn-ghost text-[10px] py-2 px-4 flex items-center gap-2">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="7 10 12 15 17 10"/>
+                      <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    {t.applications.downloadBaseCV}
+                  </button>
+                )}
+                {!cvScore && !cvSaved && (
                   <span className="font-mono text-[10px] text-slate-400">
                     {t.applications.cvEvalBeforeSave}
                   </span>
