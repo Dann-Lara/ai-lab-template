@@ -180,52 +180,58 @@ export class ApplicationsService {
       'LANGUAGES:\n' + esc(baseCV.languages) + '\n\n' +
       'CERTIFICATIONS:\n' + esc(baseCV.certifications);
 
-    // ── ATS expert system prompt ──────────────────────────────────────────────
-    // Rules derived from leading ATS systems (Workday, Taleo, Greenhouse, Lever):
-    //  - Standard section headers (no fancy names)
-    //  - Keywords must appear verbatim from the job offer, not paraphrased
-    //  - Contact block on top, no columns/tables/graphics
-    //  - Dates in MM/YYYY format
-    //  - Bullet points with hyphen "-", not Unicode bullets
-    //  - Numbers over words: "5 years" not "five years"
-    //  - Logical inference allowed: if candidate knows React, infer JSX/hooks/components
+    // We use a delimiter-based format instead of embedding full CVs inside JSON values.
+    // Embedding 2-page CVs inside JSON strings causes truncation and parse failures
+    // because models serialize \n as literal chars and some providers cap output tokens.
+    //
+    // Format:
+    //   SCORE:<integer>
+    //   ===ES===
+    //   <full Spanish CV, plain text>
+    //   ===EN===
+    //   <full English CV, plain text>
+    //   ===END===
     const systemMessage =
-      'You are a world-class ATS CV specialist and career coach. Your task: produce TWO versions of a hybrid CV\n' +
-      '(one in Spanish, one in English) that scores 90-100% on ANY ATS system without lying.\n\n' +
-      'HYBRID APPROACH — how to adapt without inventing:\n' +
-      '- If the base CV lists a technology/tool, you MAY describe logical derivatives:\n' +
-      '  React → "built reusable components with React/JSX and hooks"\n' +
-      '  Node.js → "designed RESTful APIs with Node.js"\n' +
-      '  SQL → "wrote complex queries and optimized indexes"\n' +
+      'You are a world-class ATS CV specialist. Your task: produce TWO versions of a hybrid CV\n' +
+      '(Spanish then English) that scores 90-100% on ANY ATS system without lying.\n\n' +
+      'HYBRID APPROACH — adapt without inventing:\n' +
+      '- If the base CV lists a tool, describe its logical derivatives truthfully:\n' +
+      '  React -> "built reusable components with React and hooks"\n' +
+      '  Node.js -> "designed RESTful APIs with Node.js and Express"\n' +
+      '  SQL -> "wrote complex queries and optimized indexes"\n' +
       '- Never add companies, job titles, degrees or dates not in the base CV\n' +
       '- Never inflate years of experience\n' +
-      '- Rephrase existing achievements to use exact job-offer wording when truthful\n\n' +
-      'ATS FORMATTING RULES (mandatory — ATS systems reject non-compliant CVs):\n' +
-      '1. Plain text only — NO tables, columns, headers/footers, text boxes, images\n' +
-      '2. Section headers: CONTACT | SUMMARY | EXPERIENCE | EDUCATION | SKILLS | LANGUAGES | CERTIFICATIONS\n' +
-      '3. Dates: MM/YYYY–MM/YYYY format (e.g. 03/2021–Present)\n' +
-      '4. Bullet points: hyphen + space "- " only, never Unicode bullets (•, ●, ▸)\n' +
-      '5. Numbers over words: "5 years" not "five years", "3 projects" not "three projects"\n' +
-      '6. Embed exact keywords from the job offer verbatim (ATS does exact string match)\n' +
-      '7. Skills section: comma-separated on a single block, no categories\n' +
-      '8. No personal pronouns (I, me, my) — start bullets with action verbs\n' +
-      '9. File structure: one column, left-to-right top-to-bottom reading order\n' +
-      '10. Summary must start with job title from the offer + years of experience\n\n' +
+      '- Rephrase existing achievements using exact job-offer wording when truthful\n\n' +
+      'ATS FORMATTING RULES (strictly required):\n' +
+      '1. Plain text only - NO tables, columns, headers/footers, images\n' +
+      '2. Section headers ALL CAPS: CONTACT | SUMMARY | EXPERIENCE | EDUCATION | SKILLS | LANGUAGES | CERTIFICATIONS\n' +
+      '3. Dates: MM/YYYY format (e.g. 03/2021 - Present)\n' +
+      '4. Bullet points: hyphen-space "- " only, never Unicode bullets\n' +
+      '5. Numbers over words: "5 years" not "five years"\n' +
+      '6. Embed EXACT keywords from job offer verbatim\n' +
+      '7. Skills section: comma-separated list, no sub-categories\n' +
+      '8. No personal pronouns - start bullets with action verbs\n' +
+      '9. Summary: first sentence = job title from offer + years of experience\n' +
+      '10. Contact block at top, everything else below in a single column\n\n' +
       'KEYWORD STRATEGY:\n' +
       '- Extract ALL technical keywords from the job offer\n' +
-      '- Place the 5 most important ones in the Summary\n' +
-      '- Use remaining keywords naturally in Experience bullets\n' +
-      '- List ALL job-offer skills in Skills section (only if truthfully derivable)\n\n' +
-      'ATS SCORE: calculate 0-100 based on keyword density and section completeness\n\n' +
-      'OUTPUT: ONLY raw JSON, no markdown:\n' +
-      '{"atsScore":<0-100>,"cvEs":"<full Spanish CV with \\n newlines>","cvEn":"<full English CV with \\n newlines>"}';
+      '- Put the 5 most critical ones in the Summary section\n' +
+      '- Distribute remaining keywords naturally in Experience bullets\n' +
+      '- List all derivable job-offer skills in the Skills section\n\n' +
+      'CRITICAL — RESPONSE FORMAT (no JSON, no markdown, no backticks):\n' +
+      'SCORE:<integer 0-100>\n' +
+      '===ES===\n' +
+      '<complete Spanish CV here, plain text, use real newlines>\n' +
+      '===EN===\n' +
+      '<complete English CV here, plain text, use real newlines>\n' +
+      '===END===';
 
     const prompt =
-      'JOB OFFER (' + esc(dto.company) + ' — ' + esc(dto.position) + '):\n' +
+      'JOB OFFER (' + esc(dto.company) + ' - ' + esc(dto.position) + '):\n' +
       esc(dto.jobOffer) + '\n\n' +
       '---\n\n' +
       'CANDIDATE BASE CV:\n' + cvBlock + '\n\n' +
-      'Produce the dual-language hybrid ATS CV. Return ONLY the JSON object.';
+      'Produce the dual-language hybrid ATS CVs in the exact format specified.';
 
     this.logger.log(`Generating dual ATS CV: ${dto.position} @ ${dto.company} for user ${userId}`);
 
@@ -233,28 +239,44 @@ export class ApplicationsService {
       const { text, model } = await generateText({
         prompt,
         systemMessage,
-        maxTokens: 5000,
-        temperature: 0.25,
+        maxTokens: 6000,
+        temperature: 0.2,
       });
       this.logger.debug(`generateCv model: ${model} — chars: ${text.length}`);
 
-      const parsed = extractJson<{ atsScore: number; cvEs?: string; cvEn?: string; cvText?: string }>(text);
-      if (!parsed || typeof parsed.atsScore !== 'number') {
-        this.logger.warn(`generateCv unexpected format: ${text.slice(0, 200)}`);
-        throw new Error('AI response missing atsScore or CV text');
+      // ── Parse delimiter format ──────────────────────────────────────────
+      // Strip any accidental markdown fences
+      const clean = text.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
+
+      const scoreMatch = clean.match(/SCORE\s*:\s*(\d+)/i);
+      const atsScore   = scoreMatch ? Math.min(100, Math.max(0, parseInt(scoreMatch[1], 10))) : 75;
+
+      const esMatch = clean.match(/===ES===\s*([\s\S]*?)(?:===EN===|===END===|$)/i);
+      const enMatch = clean.match(/===EN===\s*([\s\S]*?)(?:===END===|$)/i);
+
+      let cvEs = (esMatch?.[1] ?? '').trim();
+      let cvEn = (enMatch?.[1] ?? '').trim();
+
+      // Fallback: if delimiters not found, try JSON extraction for backwards-compat
+      if (!cvEs && !cvEn) {
+        this.logger.warn(`generateCv: delimiters not found, attempting JSON parse fallback`);
+        try {
+          const parsed = JSON.parse(clean.slice(clean.indexOf('{'))) as { atsScore?: number; cvEs?: string; cvEn?: string; cvText?: string };
+          cvEs = (parsed.cvEs ?? parsed.cvText ?? '').trim();
+          cvEn = (parsed.cvEn ?? parsed.cvText ?? '').trim();
+        } catch { /* ignore */ }
       }
 
-      // Support old format (cvText) as fallback if model returns single CV
-      const cvEs = (parsed.cvEs ?? parsed.cvText ?? '').trim();
-      const cvEn = (parsed.cvEn ?? parsed.cvText ?? '').trim();
+      if (!cvEs && !cvEn) {
+        this.logger.error(`generateCv: could not extract CVs. Raw (first 400): ${text.slice(0, 400)}`);
+        throw new Error('AI did not return CV content in the expected format');
+      }
 
-      if (!cvEs && !cvEn) throw new Error('AI returned empty CV content');
+      // If only one version was returned, mirror it
+      if (!cvEs) cvEs = cvEn;
+      if (!cvEn) cvEn = cvEs;
 
-      return {
-        atsScore: Math.min(100, Math.max(0, Math.round(parsed.atsScore))),
-        cvEs,
-        cvEn,
-      };
+      return { atsScore, cvEs, cvEn };
     }, 2, 2000);
   }
 
