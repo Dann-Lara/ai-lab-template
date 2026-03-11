@@ -29,37 +29,80 @@ const IconLink = () => (
   </svg>
 );
 
-// ── ATS PDF — section-aware, no browser chrome ───────────────────────────────
-// @page margin:0 + body padding removes URL/title/date/page-number browser headers.
-// Each ALL-CAPS section is wrapped in a div with page-break-inside:avoid so
-// section headers never orphan at the bottom of a page.
+// ── ATS PDF ──────────────────────────────────────────────────────────────────
+// Renders plain-text CV as semantic HTML so the browser can reflow content
+// naturally across pages. Only section headers get break-after:avoid so they
+// never orphan — bullets and body text flow freely.
+// @page margin:0 + body padding = no browser headers/footers (URL, date, pages).
 function printATS(cvText: string, lang: 'es' | 'en', position: string, company: string) {
   const win = window.open('', '_blank');
   if (!win) return;
 
-  const sectionRx = /^(CONTACT(?:O)?|SUMMARY|RESUMEN|EXPERIENCE|EXPERIENCIA|EDUCATION|EDUCACI[OÓ]N|SKILLS|HABILIDADES|LANGUAGES|IDIOMAS|CERTIFICATIONS|CERTIFICACIONES)$/m;
-  const lines = cvText.split('\n');
-  let html = '';
-  let buf = '';
-  const flush = () => {
-    if (buf.trim()) html += `<div class="s"><pre>${buf.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre></div>`;
-    buf = '';
-  };
-  for (const line of lines) {
-    if (sectionRx.test(line.trim())) { flush(); buf = line + '\n'; }
-    else buf += line + '\n';
+  const SECTION_RX = /^(CONTACT(?:O)?|SUMMARY|RESUMEN|EXPERIENCE|EXPERIENCIA|EDUCATION|EDUCACI[OÓ]N|SKILLS|HABILIDADES|LANGUAGES|IDIOMAS|CERTIFICATIONS|CERTIFICACIONES)$/i;
+  const ROLE_RX    = /^.{3,60}[|–—-].{3,}$/; // "Company — Role | Date" lines
+
+  const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const htmlLines: string[] = [];
+  for (const raw of cvText.split('\n')) {
+    const line = raw.trimEnd();
+    if (line === '') {
+      htmlLines.push('<div class="gap"></div>');
+    } else if (SECTION_RX.test(line.trim())) {
+      htmlLines.push(`<h2>${esc(line.trim())}</h2>`);
+    } else if (line.trimStart().startsWith('- ')) {
+      htmlLines.push(`<p class="bullet">${esc(line.trimStart().slice(2))}</p>`);
+    } else if (ROLE_RX.test(line.trim())) {
+      htmlLines.push(`<p class="role">${esc(line.trim())}</p>`);
+    } else {
+      htmlLines.push(`<p>${esc(line.trim())}</p>`);
+    }
   }
-  flush();
 
   win.document.write(`<!DOCTYPE html>
 <html lang="${lang}"><head><meta charset="UTF-8"/><title></title>
 <style>
-@page{margin:0;size:Letter}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,Helvetica,sans-serif;font-size:11pt;line-height:1.5;color:#000;background:#fff;padding:0.75in}
-pre{font-family:Arial,Helvetica,sans-serif;font-size:11pt;white-space:pre-wrap;word-wrap:break-word;line-height:1.5}
-.s{page-break-inside:avoid;break-inside:avoid;margin-bottom:0.15in}
-</style></head><body>${html}</body></html>`);
+@page { margin: 0; size: Letter; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #000;
+  background: #fff;
+  padding: 0.65in 0.75in;
+}
+h2 {
+  font-size: 10.5pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.22in;
+  margin-bottom: 0.04in;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+p {
+  margin-bottom: 0.03in;
+  break-inside: avoid;
+}
+p.role {
+  font-weight: bold;
+  margin-top: 0.06in;
+  margin-bottom: 0.02in;
+  break-after: avoid;
+  page-break-after: avoid;
+}
+p.bullet {
+  padding-left: 0.18in;
+  text-indent: -0.18in;
+}
+p.bullet::before {
+  content: "- ";
+}
+div.gap { height: 0.04in; }
+</style></head>
+<body>${htmlLines.join('\n')}</body></html>`);
   win.document.close();
   win.addEventListener('load', () => { win.focus(); win.print(); win.close(); });
 }
