@@ -171,104 +171,124 @@ export class ApplicationsService {
       );
     }
 
-    const cvBlock =
-      'NAME: ' + esc(baseCV.fullName) + '\n' +
-      'EMAIL: ' + esc(baseCV.email) + '\n' +
-      'PHONE: ' + esc(baseCV.phone) + '\n' +
-      'LOCATION: ' + esc(baseCV.location) + '\n' +
-      'LINKEDIN: ' + esc(baseCV.linkedIn) + '\n\n' +
-      'PROFESSIONAL SUMMARY:\n' + esc(baseCV.summary) + '\n\n' +
-      'WORK EXPERIENCE:\n' + esc(baseCV.experience) + '\n\n' +
-      'EDUCATION:\n' + esc(baseCV.education) + '\n\n' +
-      'SKILLS:\n' + esc(baseCV.skills) + '\n\n' +
-      'LANGUAGES:\n' + esc(baseCV.languages) + '\n\n' +
-      'CERTIFICATIONS:\n' + esc(baseCV.certifications);
+    // ── Build structured candidate profile — NO esc() needed ──────────────
+    // We use SystemMessage/HumanMessage directly (no LangChain template parsing),
+    // so curly braces in the candidate's text are safe as-is.
+    const candidate = [
+      `FULL NAME: ${baseCV.fullName}`,
+      `EMAIL: ${baseCV.email}`,
+      `PHONE: ${baseCV.phone}`,
+      `LOCATION: ${baseCV.location}`,
+      baseCV.linkedIn ? `LINKEDIN: ${baseCV.linkedIn}` : '',
+      '',
+      '--- PROFESSIONAL SUMMARY ---',
+      baseCV.summary,
+      '',
+      '--- WORK EXPERIENCE ---',
+      baseCV.experience,
+      '',
+      '--- EDUCATION ---',
+      baseCV.education || '(not provided)',
+      '',
+      '--- TECHNICAL SKILLS ---',
+      baseCV.skills || '(not provided)',
+      '',
+      '--- LANGUAGES ---',
+      baseCV.languages || '(not provided)',
+      '',
+      '--- CERTIFICATIONS ---',
+      baseCV.certifications || '(not provided)',
+    ].filter(l => l !== undefined).join('\n');
 
-    // We use a delimiter-based format instead of embedding full CVs inside JSON values.
-    // Embedding 2-page CVs inside JSON strings causes truncation and parse failures
-    // because models serialize \n as literal chars and some providers cap output tokens.
-    //
-    // Format:
-    //   SCORE:<integer>
-    //   ===ES===
-    //   <full Spanish CV, plain text>
-    //   ===EN===
-    //   <full English CV, plain text>
-    //   ===END===
-    // ── ATS expert system prompt ──────────────────────────────────────────────
-    const atsSystemMsg =
-      'You are a world-class ATS CV specialist. Produce ONE complete hybrid CV that scores 90-100% on ANY ATS system without lying.\n\n' +
-      'HYBRID APPROACH — adapt without inventing:\n' +
-      '- If the base CV lists a tool, describe logical derivatives truthfully:\n' +
-      '  Angular -> "built scalable SPAs with Angular and RxJS"\n' +
-      '  React -> "built reusable components with React and hooks"\n' +
-      '  Node.js -> "designed RESTful APIs with Node.js and Express"\n' +
-      '  SQL -> "wrote complex queries and optimized indexes"\n' +
-      '- NEVER add companies, job titles, degrees or dates not in the base CV\n' +
-      '- NEVER inflate years of experience\n' +
-      '- Rephrase achievements using exact job-offer keywords when truthful\n\n' +
-      'ATS FORMATTING RULES (strictly enforced — NO exceptions):\n' +
-      '1. NO markdown — no **, no *, no #, no backticks, no bold, no italic\n' +
-      '2. Plain text only — NO tables, columns, headers/footers, images\n' +
-      '3. Section headers ALL CAPS exactly: CONTACT, SUMMARY, EXPERIENCE, EDUCATION, SKILLS, LANGUAGES, CERTIFICATIONS\n' +
-      '4. Each section header on its own line, followed by a blank line\n' +
-      '5. Dates: MM/YYYY format (e.g. 03/2021 - Present)\n' +
-      '6. Bullet points: hyphen-space "- " only, never Unicode bullets (•, ●, ▸)\n' +
-      '7. Numbers over words: "7 years" not "seven years"\n' +
-      '8. Embed EXACT keywords from job offer verbatim\n' +
-      '9. Skills section: comma-separated single block, no sub-categories\n' +
-      '10. No personal pronouns (I, me, my) — start every bullet with an action verb\n' +
-      '11. Summary: first sentence = target job title + total years of experience\n' +
-      '12. Contact block at top, everything below in a single column\n\n' +
-      'KEYWORD STRATEGY:\n' +
-      '- Extract ALL technical keywords from the job offer\n' +
-      '- Put the 5 most critical in Summary\n' +
-      '- Distribute others naturally in Experience bullets\n' +
-      '- List ALL derivable job-offer skills in Skills section\n\n' +
-      'OUTPUT RULES:\n' +
-      '- No preamble, no closing remarks, no explanations\n' +
-      '- Start directly with the candidate full name on the first line\n' +
-      '- If you are tempted to use ** or * for emphasis: DO NOT. Use plain text only.\n' +
-      '- The entire response is the CV and nothing else.';
+    // ── System message: role + constraints ───────────────────────────────────
+    const systemMessage =
+`You are an expert technical recruiter and CV writer with 15+ years of experience crafting ATS-optimized resumes.
 
-    const jobHeader =
-      'JOB OFFER (' + esc(dto.company) + ' — ' + esc(dto.position) + '):\n' +
-      esc(dto.jobOffer) + '\n\n---\n\nCANDIDATE BASE CV:\n' + cvBlock;
+YOUR TASK:
+Create a tailored CV in English by combining the candidate's real background with the language and keywords from the job offer.
 
-    this.logger.log(`Generating ATS CV (EN): ${dto.position} @ ${dto.company} for user ${userId}`);
+HYBRID METHODOLOGY — what this means:
+1. KEEP all real data: actual company names, actual job titles, actual dates, actual education, actual certifications
+2. REFRAME descriptions: rewrite bullet points and summary using the job offer's exact keywords and terminology
+3. INFER logically: if the candidate knows Angular, they know RxJS, observables, lazy loading, DI — state these explicitly
+4. PRIORITIZE: put the skills and experiences most relevant to this job first within each section
+5. NEVER invent: do not add companies, degrees, certifications, or years of experience that are not in the base CV
 
-    // ── Generate EN CV — single focused call ─────────────────────────────────
-    // Score is computed locally from keyword overlap — no extra AI call needed.
-    // A separate score call with maxTokens:10 causes Gemini to return empty candidates[].
-    const enResult = await withRetry(() => generateText({
-      prompt: jobHeader + '\n\nWrite the complete ATS-optimized CV in ENGLISH. Plain text only. No markdown. No ** or * characters. No preamble.',
-      systemMessage: atsSystemMsg,
+INFERENCE GUIDE (use these when the base skill is present):
+- Angular → RxJS, observables, reactive programming, lazy loading, Angular CLI, NgRx, component architecture
+- React → hooks, functional components, context API, React Router, testing with RTL
+- Vue/Nuxt → Vue Router, Vuex/Pinia, SSR, composition API
+- TypeScript → generics, decorators, interfaces, strict typing, utility types
+- Node.js/NestJS → REST APIs, middleware, dependency injection, modules, guards, interceptors
+- SQL/PostgreSQL → complex queries, indexes, query optimization, migrations, transactions
+- Docker → docker-compose, multi-stage builds, networking, volumes
+- Git → branching strategies, pull requests, code review, CI/CD pipelines
+
+ATS FORMATTING REQUIREMENTS:
+- NO markdown: no ** bold **, no *italic*, no # headers, no backticks
+- Section headers in ALL CAPS on their own line: CONTACT, SUMMARY, EXPERIENCE, EDUCATION, SKILLS, LANGUAGES, CERTIFICATIONS
+- Dates in MM/YYYY format
+- Bullet points using "- " (hyphen space) only
+- No personal pronouns — every bullet starts with an action verb
+- Single column, plain text, no tables or columns
+
+OUTPUT: Start immediately with the candidate's full name. No preamble. No closing remarks. The entire response is the CV.`;
+
+    // ── User prompt: job offer + candidate profile ────────────────────────────
+    const prompt =
+`=== JOB OFFER ===
+Company: ${dto.company}
+Position: ${dto.position}
+
+${dto.jobOffer}
+
+=== CANDIDATE BASE CV ===
+${candidate}
+
+=== INSTRUCTIONS ===
+Write a complete ATS-optimized CV in English that maximizes this candidate's match to the job offer above.
+- Use the candidate's REAL experience, companies, dates and education — do not change these facts
+- Rewrite the summary and bullet points to mirror the job offer's language and keywords
+- Apply the inference guide: if they know a technology, explicitly name the related sub-skills
+- Organize experience bullets with the most relevant achievements first
+- The SKILLS section must include every keyword from the job offer that is truthfully derivable from the candidate's profile
+Plain text only. No markdown. Start with the full name.`;
+
+    this.logger.log(`Generating hybrid ATS CV: ${dto.position} @ ${dto.company} for user ${userId}`);
+
+    const result = await withRetry(() => generateText({
+      prompt,
+      systemMessage,
       maxTokens: 4000,
-      temperature: 0.2,
-    }), 2, 1500);
+      temperature: 0.3,
+    }), 2, 2000);
 
+    // ── Clean any residual markdown the model might sneak in ─────────────────
     const cleanCv = (raw: string) => raw
-      .replace(/```[a-z]*\n?/gi, '').replace(/```/g, '')   // strip code fences
-      .replace(/\*\*([^*]+)\*\*/g, '$1')                    // strip **bold**
-      .replace(/\*([^*]+)\*/g, '$1')                        // strip *italic*
-      .replace(/^#{1,3}\s+/gm, '')                          // strip # headers
+      .replace(/```[a-z]*\n?/gi, '').replace(/```/g, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/^#{1,4}\s+/gm, '')
+      .replace(/^---+$/gm, '')
       .trim();
 
-    const cvEn = cleanCv(enResult.text);
-    if (!cvEn) throw new Error('AI returned empty CV content');
+    const cvEn = cleanCv(result.text);
+    if (!cvEn || cvEn.length < 200) {
+      this.logger.error(`generateCv: output too short (${cvEn.length} chars). Raw: ${result.text.slice(0, 300)}`);
+      throw new Error('AI returned incomplete CV content');
+    }
 
-    // ── ATS score: keyword overlap between job offer and generated CV ─────────
-    // Simple but effective: count how many job-offer words (≥5 chars) appear in the CV.
+    // ── ATS score: keyword overlap (job offer vs generated CV) ───────────────
     const offerWords = new Set(
-      dto.jobOffer.toLowerCase().match(/\b[a-z]{5,}\b/g) ?? []
+      dto.jobOffer.toLowerCase().match(/\b[a-zA-Z]{4,}\b/g)?.map(w => w.toLowerCase()) ?? []
     );
-    const cvWords    = cvEn.toLowerCase();
-    const matches    = [...offerWords].filter(w => cvWords.includes(w)).length;
-    const atsScore   = offerWords.size > 0
-      ? Math.min(100, Math.round((matches / offerWords.size) * 140))  // scale to ~85-100 for good CVs
+    const cvLower  = cvEn.toLowerCase();
+    const matches  = [...offerWords].filter(w => cvLower.includes(w)).length;
+    const atsScore = offerWords.size > 0
+      ? Math.min(100, Math.round((matches / offerWords.size) * 130))
       : 80;
 
-    this.logger.debug(`generateCv EN: ${enResult.model} — ${cvEn.length} chars — atsScore: ${atsScore}`);
+    this.logger.debug(`generateCv: ${result.model} — ${cvEn.length} chars — atsScore: ${atsScore} (${matches}/${offerWords.size} keywords)`);
 
     return { atsScore, cvEs: '', cvEn };
   }
@@ -297,8 +317,55 @@ export class ApplicationsService {
       '9. Output ONLY the Spanish CV, plain text, starting with the candidate name.';
 
     const prompt =
-      'Translate and adapt this English ATS CV to Spanish following the rules strictly.\n\n' +
-      'ENGLISH CV:\n' + esc(app.cvGeneratedEn);
+      `Translate and adapt this English ATS CV to Spanish following all rules.
+
+ENGLISH CV:
+${app.cvGeneratedEn}`;
+
+    return withRetry(async () => {
+      const { text } = await generateText({
+        prompt, systemMessage, maxTokens: 4000, temperature: 0.1,
+      });
+      const cvEs = text
+        .replace(/```[a-z]*\n?/gi, '').replace(/```/g, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/^#{1,3}\s+/gm, '')
+        .trim();
+      // Save back to the application
+      await this.appRepo.update({ id: appId, userId }, { cvGeneratedEs: cvEs });
+      return { cvEs };
+    }, 2, 1500);
+  }
+
+      // ── AI: Answer interview questions ──────────────────────────────────────────
+
+  async adaptCvToSpanish(
+    userId: string,
+    appId: string,
+  ): Promise<{ cvEs: string }> {
+    const app = await this.findOne(userId, appId);
+    if (!app.cvGeneratedEn) throw new BadRequestException('No English CV saved for this application');
+
+    const systemMessage =
+      'You are a world-class ATS CV specialist.\n' +
+      'You receive an English ATS-optimized CV. Your task: produce the equivalent CV in Spanish.\n\n' +
+      'RULES:\n' +
+      '1. Translate section headers to Spanish ALL CAPS: CONTACTO, RESUMEN, EXPERIENCIA, EDUCACION, HABILIDADES, IDIOMAS, CERTIFICACIONES\n' +
+      '2. Translate all content naturally to professional Spanish\n' +
+      '3. Keep ALL technical terms in English (Angular, React, TypeScript, REST API, etc.)\n' +
+      '4. Keep dates in MM/YYYY format\n' +
+      '5. Keep bullet points as "- " (hyphen-space)\n' +
+      '6. NO markdown — no **, no *, no #\n' +
+      '7. Keep same structure: contact block at top, single column\n' +
+      '8. Adapt action verbs to Spanish (e.g. "Developed" -> "Desarrollé")\n' +
+      '9. Output ONLY the Spanish CV, plain text, starting with the candidate name.';
+
+    const prompt =
+      `Translate and adapt this English ATS CV to Spanish following all rules.
+
+ENGLISH CV:
+${app.cvGeneratedEn}`;
 
     return withRetry(async () => {
       const { text } = await generateText({
