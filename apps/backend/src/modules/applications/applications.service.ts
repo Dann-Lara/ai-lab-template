@@ -232,7 +232,14 @@ ATS FORMATTING REQUIREMENTS:
 - No personal pronouns — every bullet starts with an action verb
 - Single column, plain text, no tables or columns
 
-OUTPUT: Start immediately with the candidate's full name. No preamble. No closing remarks. The entire response is the CV.`;
+OUTPUT FORMAT (mandatory — follow exactly):
+Line 1: ATS_SCORE:<integer 0-100>
+Line 2: blank line
+Lines 3+: the complete CV starting with the candidate's full name
+
+The ATS_SCORE reflects how well this hybrid CV matches the job offer — keyword coverage, seniority alignment, and skill fit. Be honest: a great match is 85-95, average is 65-80, poor is below 65.
+
+No preamble. No closing remarks. No markdown. The entire response after the score line is the CV.`;
 
     // ── User prompt: job offer + candidate profile ────────────────────────────
     const prompt =
@@ -252,7 +259,9 @@ Write a complete ATS-optimized CV in English that maximizes this candidate's mat
 - Apply the inference guide: if they know a technology, explicitly name the related sub-skills
 - Organize experience bullets with the most relevant achievements first
 - The SKILLS section must include every keyword from the job offer that is truthfully derivable from the candidate's profile
-Plain text only. No markdown. Start with the full name.`;
+Plain text only. No markdown.
+First line of your response must be: ATS_SCORE:<number>
+Then a blank line, then the CV starting with the candidate's full name.`;
 
     this.logger.log(`Generating hybrid ATS CV: ${dto.position} @ ${dto.company} for user ${userId}`);
 
@@ -263,33 +272,37 @@ Plain text only. No markdown. Start with the full name.`;
       temperature: 0.3,
     }), 2, 2000);
 
-    // ── Clean any residual markdown the model might sneak in ─────────────────
+    // ── Parse ATS_SCORE from first line, then clean CV body ────────────────
+    const raw    = result.text;
+    const lines  = raw.split('\n');
+    const firstLine = lines[0].trim();
+    const scoreMatch = firstLine.match(/ATS_SCORE\s*:\s*(\d+)/i);
+
+    let atsScore = 80; // fallback
+    let cvRaw    = raw;
+
+    if (scoreMatch) {
+      atsScore = Math.min(100, Math.max(0, parseInt(scoreMatch[1], 10)));
+      // Strip the score line (and optional blank line after it) from the CV body
+      cvRaw = lines.slice(firstLine === '' ? 2 : 1).join('\n').replace(/^\n+/, '');
+    } else {
+      this.logger.warn(`generateCv: ATS_SCORE line not found in output. First line: ${firstLine}`);
+    }
+
     const cleanCv = (raw: string) => raw
       .replace(/```[a-z]*\n?/gi, '').replace(/```/g, '')
       .replace(/\*\*([^*]+)\*\*/g, '$1')
       .replace(/\*([^*]+)\*/g, '$1')
       .replace(/^#{1,4}\s+/gm, '')
-      .replace(/^---+$/gm, '')
       .trim();
 
-    const cvEn = cleanCv(result.text);
+    const cvEn = cleanCv(cvRaw);
     if (!cvEn || cvEn.length < 200) {
-      this.logger.error(`generateCv: output too short (${cvEn.length} chars). Raw: ${result.text.slice(0, 300)}`);
+      this.logger.error(`generateCv: CV too short (${cvEn.length} chars). Raw[:300]: ${raw.slice(0, 300)}`);
       throw new Error('AI returned incomplete CV content');
     }
 
-    // ── ATS score: keyword overlap (job offer vs generated CV) ───────────────
-    const offerWords = new Set(
-      dto.jobOffer.toLowerCase().match(/\b[a-zA-Z]{4,}\b/g)?.map(w => w.toLowerCase()) ?? []
-    );
-    const cvLower  = cvEn.toLowerCase();
-    const matches  = [...offerWords].filter(w => cvLower.includes(w)).length;
-    const atsScore = offerWords.size > 0
-      ? Math.min(100, Math.round((matches / offerWords.size) * 130))
-      : 80;
-
-    this.logger.debug(`generateCv: ${result.model} — ${cvEn.length} chars — atsScore: ${atsScore} (${matches}/${offerWords.size} keywords)`);
-
+    this.logger.debug(`generateCv done: ${result.model} — ${cvEn.length} chars — atsScore: ${atsScore}`);
     return { atsScore, cvEs: '', cvEn };
   }
 
