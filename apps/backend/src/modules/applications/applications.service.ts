@@ -237,21 +237,15 @@ export class ApplicationsService {
 
     this.logger.log(`Generating ATS CV (EN): ${dto.position} @ ${dto.company} for user ${userId}`);
 
-    // ── Generate EN + score in parallel (ES generated separately on demand) ──
-    const [enResult, scoreResult] = await Promise.all([
-      withRetry(() => generateText({
-        prompt: jobHeader + '\n\nWrite the complete ATS-optimized CV in ENGLISH. Plain text, no markdown, no ** or * characters.',
-        systemMessage: atsSystemMsg,
-        maxTokens: 4000,
-        temperature: 0.2,
-      }), 2, 1500),
-      withRetry(() => generateText({
-        prompt: jobHeader + '\n\nOutput ONLY a single integer 0-100 for the ATS keyword match score. Nothing else.',
-        systemMessage: 'You are an ATS scoring engine. Output a single integer 0-100. No explanation.',
-        maxTokens: 10,
-        temperature: 0,
-      }), 2, 1500),
-    ]);
+    // ── Generate EN CV — single focused call ─────────────────────────────────
+    // Score is computed locally from keyword overlap — no extra AI call needed.
+    // A separate score call with maxTokens:10 causes Gemini to return empty candidates[].
+    const enResult = await withRetry(() => generateText({
+      prompt: jobHeader + '\n\nWrite the complete ATS-optimized CV in ENGLISH. Plain text only. No markdown. No ** or * characters. No preamble.',
+      systemMessage: atsSystemMsg,
+      maxTokens: 4000,
+      temperature: 0.2,
+    }), 2, 1500);
 
     const cleanCv = (raw: string) => raw
       .replace(/```[a-z]*\n?/gi, '').replace(/```/g, '')   // strip code fences
@@ -261,17 +255,22 @@ export class ApplicationsService {
       .trim();
 
     const cvEn = cleanCv(enResult.text);
-    // cvEs is empty on initial generation — user requests it separately
-    const cvEs = '';
-
-    const scoreRaw = parseInt(scoreResult.text.replace(/\D/g, ''), 10);
-    const atsScore = isNaN(scoreRaw) ? 75 : Math.min(100, Math.max(0, scoreRaw));
-
-    this.logger.debug(`generateCv EN: ${enResult.model} — ${cvEn.length} chars`);
-
     if (!cvEn) throw new Error('AI returned empty CV content');
 
-    return { atsScore, cvEs, cvEn };
+    // ── ATS score: keyword overlap between job offer and generated CV ─────────
+    // Simple but effective: count how many job-offer words (≥5 chars) appear in the CV.
+    const offerWords = new Set(
+      dto.jobOffer.toLowerCase().match(/\b[a-z]{5,}\b/g) ?? []
+    );
+    const cvWords    = cvEn.toLowerCase();
+    const matches    = [...offerWords].filter(w => cvWords.includes(w)).length;
+    const atsScore   = offerWords.size > 0
+      ? Math.min(100, Math.round((matches / offerWords.size) * 140))  // scale to ~85-100 for good CVs
+      : 80;
+
+    this.logger.debug(`generateCv EN: ${enResult.model} — ${cvEn.length} chars — atsScore: ${atsScore}`);
+
+    return { atsScore, cvEs: '', cvEn };
   }
 
   // ── AI: Adapt EN CV to Spanish ─────────────────────────────────────────────
