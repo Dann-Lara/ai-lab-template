@@ -232,14 +232,19 @@ ATS FORMATTING REQUIREMENTS:
 - No personal pronouns — every bullet starts with an action verb
 - Single column, plain text, no tables or columns
 
-OUTPUT FORMAT (mandatory — follow exactly):
-Line 1: ATS_SCORE:<integer 0-100>
-Line 2: blank line
-Lines 3+: the complete CV starting with the candidate's full name
+OUTPUT FORMAT (follow exactly — two parts):
 
-The ATS_SCORE reflects how well this hybrid CV matches the job offer — keyword coverage, seniority alignment, and skill fit. Be honest: a great match is 85-95, average is 65-80, poor is below 65.
+PART 1 — Write the complete CV first:
+- Start directly with the candidate's full name (no preamble)
+- Include ALL sections in full: CONTACT, SUMMARY, EXPERIENCE (every role, every bullet), EDUCATION, SKILLS, LANGUAGES, CERTIFICATIONS
+- Do NOT stop or truncate — write every section completely before moving on
 
-No preamble. No closing remarks. No markdown. The entire response after the score line is the CV.`;
+PART 2 — After the last CV section, add this on its own line:
+===ATS_SCORE:<integer 0-100>===
+
+The score reflects how well this hybrid CV matches the job offer (keyword coverage, seniority, skill alignment). Be honest: 85-95 = strong match, 65-84 = good, below 65 = weak.
+
+No markdown. No preamble. No truncation. The CV must be complete before the score line.`;
 
     // ── User prompt: job offer + candidate profile ────────────────────────────
     const prompt =
@@ -260,33 +265,46 @@ Write a complete ATS-optimized CV in English that maximizes this candidate's mat
 - Organize experience bullets with the most relevant achievements first
 - The SKILLS section must include every keyword from the job offer that is truthfully derivable from the candidate's profile
 Plain text only. No markdown.
-First line of your response must be: ATS_SCORE:<number>
-Then a blank line, then the CV starting with the candidate's full name.`;
+Write the COMPLETE CV first (every section, every bullet, nothing omitted), then end with:
+===ATS_SCORE:<number>===`;
 
     this.logger.log(`Generating hybrid ATS CV: ${dto.position} @ ${dto.company} for user ${userId}`);
 
     const result = await withRetry(() => generateText({
       prompt,
       systemMessage,
-      maxTokens: 4000,
+      maxTokens: 6000,
       temperature: 0.3,
     }), 2, 2000);
 
-    // ── Parse ATS_SCORE from first line, then clean CV body ────────────────
-    const raw    = result.text;
-    const lines  = raw.split('\n');
-    const firstLine = lines[0].trim();
-    const scoreMatch = firstLine.match(/ATS_SCORE\s*:\s*(\d+)/i);
+    // ── Parse ===ATS_SCORE:N=== from last line, strip it from CV body ────────
+    const raw   = result.text.trim();
+    const lines = raw.split('\n');
 
     let atsScore = 80; // fallback
     let cvRaw    = raw;
 
-    if (scoreMatch) {
-      atsScore = Math.min(100, Math.max(0, parseInt(scoreMatch[1], 10)));
-      // Strip the score line (and optional blank line after it) from the CV body
-      cvRaw = lines.slice(firstLine === '' ? 2 : 1).join('\n').replace(/^\n+/, '');
+    // Score delimiter can appear anywhere near the end — scan from the bottom
+    const scoreLineIdx = lines.map(l => l.trim()).reduce<number>(
+      (found, line, i) => /^===ATS_SCORE:\s*\d+===$/.test(line) ? i : found, -1
+    );
+
+    if (scoreLineIdx !== -1) {
+      const scoreMatch = lines[scoreLineIdx].match(/ATS_SCORE:\s*(\d+)/i);
+      if (scoreMatch) {
+        atsScore = Math.min(100, Math.max(0, parseInt(scoreMatch[1], 10)));
+      }
+      // Everything before the score line is the CV (trim trailing blank lines)
+      cvRaw = lines.slice(0, scoreLineIdx).join('\n').trimEnd();
     } else {
-      this.logger.warn(`generateCv: ATS_SCORE line not found in output. First line: ${firstLine}`);
+      // Fallback: try first-line format (old behavior)
+      const firstMatch = lines[0]?.trim().match(/ATS_SCORE:\s*(\d+)/i);
+      if (firstMatch) {
+        atsScore = Math.min(100, Math.max(0, parseInt(firstMatch[1], 10)));
+        cvRaw = lines.slice(1).join('\n').replace(/^\n+/, '');
+      } else {
+        this.logger.warn(`generateCv: ATS_SCORE delimiter not found. Last line: ${lines[lines.length - 1]}`);
+      }
     }
 
     const cleanCv = (raw: string) => raw
